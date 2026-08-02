@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "skingredient-mcp",
+      "version": "0.1.0",
+      "title": "Skingredient"
+    },
+    "tools": [
+      {
+        "name": "search_ingredients",
+        "title": "Search ingredients",
+        "description": "Search Skingredient's ingredient dictionary by name, alias, benefit, or caution keyword. Returns a compact list with id, name, category, caution level, and primary benefits.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Keyword to match against ingredient name, aliases, benefits, or supports."
+            },
+            "limit": {
+              "description": "Maximum number of results (default 10).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_ingredient",
+        "title": "Get ingredient details",
+        "description": "Return the full dictionary entry for a Skingredient ingredient by id or name, including aliases, primary benefits, caution level, and safety notes.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "idOrName": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Ingredient id (e.g. 'retinol') or display name / alias (e.g. 'Vitamin B3')."
+            }
+          },
+          "required": [
+            "idOrName"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_products",
+        "title": "List sample products",
+        "description": "List Skingredient's sample product catalog with brand, category, key ingredients, and benefit tags. Optionally filter by category or key-ingredient keyword.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "category": {
+              "description": "Filter by category (e.g. 'Moisturizer', 'Exfoliant').",
+              "type": "string"
+            },
+            "ingredient": {
+              "description": "Filter to products containing this key ingredient.",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_recommendation",
+        "title": "Get a daily skin recommendation",
+        "description": "Run Skingredient's deterministic recommendation engine for a given skin analysis and context. Returns the recommended direction (e.g. barrier-recovery), prioritized ingredients, and ingredients to avoid today.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "redness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "0-100 score from the daily skin analysis."
+            },
+            "hydration": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "0-100 score from the daily skin analysis."
+            },
+            "acne": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "0-100 score from the daily skin analysis."
+            },
+            "oiliness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "0-100 score from the daily skin analysis."
+            },
+            "texture": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "0-100 score from the daily skin analysis."
+            },
+            "pores": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "0-100 score from the daily skin analysis."
+            },
+            "symptoms": {
+              "description": "Reported symptoms today, e.g. ['stinging', 'burning'].",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "sensitivities": {
+              "description": "Known sensitivities to filter from prioritized ingredients.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "eventTiming": {
+              "description": "Timing of any upcoming event that should influence today's plan.",
+              "type": "string",
+              "enum": [
+                "tomorrow",
+                "three-days",
+                "week",
+                "none"
+              ]
+            }
+          },
+          "required": [
+            "redness",
+            "hydration",
+            "acne",
+            "oiliness",
+            "texture",
+            "pores"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
