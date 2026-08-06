@@ -9,53 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WelcomeRouteImport } from './routes/welcome'
-import { Route as RoutineRouteImport } from './routes/routine'
-import { Route as ResultsRouteImport } from './routes/results'
-import { Route as ProfileRouteImport } from './routes/profile'
-import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ShelfIndexRouteImport } from './routes/shelf.index'
-import { Route as ScanIndexRouteImport } from './routes/scan.index'
-import { Route as IngredientsIndexRouteImport } from './routes/ingredients.index'
-import { Route as ShelfAddRouteImport } from './routes/shelf.add'
-import { Route as ShelfProductIdRouteImport } from './routes/shelf.$productId'
-import { Route as ScanCheckInRouteImport } from './routes/scan.check-in'
-import { Route as IngredientsIngredientIdRouteImport } from './routes/ingredients.$ingredientId'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as InsightsRouteImport } from './routes/insights'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ResultsRouteImport } from './routes/results'
+import { Route as RoutineRouteImport } from './routes/routine'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as ApiSkinAnalysisRouteImport } from './routes/api/skin-analysis'
+import { Route as IngredientsIndexRouteImport } from './routes/ingredients.index'
+import { Route as IngredientsIngredientIdRouteImport } from './routes/ingredients.$ingredientId'
+import { Route as ScanIndexRouteImport } from './routes/scan.index'
+import { Route as ScanCheckInRouteImport } from './routes/scan.check-in'
+import { Route as ShelfIndexRouteImport } from './routes/shelf.index'
+import { Route as ShelfProductIdRouteImport } from './routes/shelf.$productId'
+import { Route as ShelfAddRouteImport } from './routes/shelf.add'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
-const WelcomeRoute = WelcomeRouteImport.update({
-  id: '/welcome',
-  path: '/welcome',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RoutineRoute = RoutineRouteImport.update({
-  id: '/routine',
-  path: '/routine',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResultsRoute = ResultsRouteImport.update({
-  id: '/results',
-  path: '/results',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OnboardingRoute = OnboardingRouteImport.update({
-  id: '/onboarding',
-  path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InsightsRoute = InsightsRouteImport.update({
@@ -63,19 +39,51 @@ const InsightsRoute = InsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShelfIndexRoute = ShelfIndexRouteImport.update({
-  id: '/shelf/',
-  path: '/shelf/',
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScanIndexRoute = ScanIndexRouteImport.update({
-  id: '/scan/',
-  path: '/scan/',
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResultsRoute = ResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoutineRoute = RoutineRouteImport.update({
+  id: '/routine',
+  path: '/routine',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSkinAnalysisRoute = ApiSkinAnalysisRouteImport.update({
+  id: '/api/skin-analysis',
+  path: '/api/skin-analysis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IngredientsIndexRoute = IngredientsIndexRouteImport.update({
@@ -83,14 +91,14 @@ const IngredientsIndexRoute = IngredientsIndexRouteImport.update({
   path: '/ingredients/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShelfAddRoute = ShelfAddRouteImport.update({
-  id: '/shelf/add',
-  path: '/shelf/add',
+const IngredientsIngredientIdRoute = IngredientsIngredientIdRouteImport.update({
+  id: '/ingredients/$ingredientId',
+  path: '/ingredients/$ingredientId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShelfProductIdRoute = ShelfProductIdRouteImport.update({
-  id: '/shelf/$productId',
-  path: '/shelf/$productId',
+const ScanIndexRoute = ScanIndexRouteImport.update({
+  id: '/scan/',
+  path: '/scan/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScanCheckInRoute = ScanCheckInRouteImport.update({
@@ -98,23 +106,21 @@ const ScanCheckInRoute = ScanCheckInRouteImport.update({
   path: '/scan/check-in',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IngredientsIngredientIdRoute = IngredientsIngredientIdRouteImport.update({
-  id: '/ingredients/$ingredientId',
-  path: '/ingredients/$ingredientId',
+const ShelfIndexRoute = ShelfIndexRouteImport.update({
+  id: '/shelf/',
+  path: '/shelf/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const ShelfProductIdRoute = ShelfProductIdRouteImport.update({
+  id: '/shelf/$productId',
+  path: '/shelf/$productId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShelfAddRoute = ShelfAddRouteImport.update({
+  id: '/shelf/add',
+  path: '/shelf/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/welcome': typeof WelcomeRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/api/skin-analysis': typeof ApiSkinAnalysisRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/welcome': typeof WelcomeRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/api/skin-analysis': typeof ApiSkinAnalysisRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
@@ -174,6 +182,7 @@ export interface FileRoutesById {
   '/welcome': typeof WelcomeRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/api/skin-analysis': typeof ApiSkinAnalysisRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/api/skin-analysis'
     | '/ingredients/$ingredientId'
     | '/scan/check-in'
     | '/shelf/$productId'
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/api/skin-analysis'
     | '/ingredients/$ingredientId'
     | '/scan/check-in'
     | '/shelf/$productId'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/welcome'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/api/skin-analysis'
     | '/ingredients/$ingredientId'
     | '/scan/check-in'
     | '/shelf/$productId'
@@ -257,6 +269,7 @@ export interface RootRouteChildren {
   WelcomeRoute: typeof WelcomeRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ApiSkinAnalysisRoute: typeof ApiSkinAnalysisRoute
   IngredientsIngredientIdRoute: typeof IngredientsIngredientIdRoute
   ScanCheckInRoute: typeof ScanCheckInRoute
   ShelfProductIdRoute: typeof ShelfProductIdRoute
@@ -269,46 +282,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/welcome': {
-      id: '/welcome'
-      path: '/welcome'
-      fullPath: '/welcome'
-      preLoaderRoute: typeof WelcomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/routine': {
-      id: '/routine'
-      path: '/routine'
-      fullPath: '/routine'
-      preLoaderRoute: typeof RoutineRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/results': {
-      id: '/results'
-      path: '/results'
-      fullPath: '/results'
-      preLoaderRoute: typeof ResultsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/onboarding': {
-      id: '/onboarding'
-      path: '/onboarding'
-      fullPath: '/onboarding'
-      preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/insights': {
@@ -318,60 +296,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsightsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/shelf/': {
-      id: '/shelf/'
-      path: '/shelf'
-      fullPath: '/shelf/'
-      preLoaderRoute: typeof ShelfIndexRouteImport
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scan/': {
-      id: '/scan/'
-      path: '/scan'
-      fullPath: '/scan/'
-      preLoaderRoute: typeof ScanIndexRouteImport
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ingredients/': {
-      id: '/ingredients/'
-      path: '/ingredients'
-      fullPath: '/ingredients/'
-      preLoaderRoute: typeof IngredientsIndexRouteImport
+    '/results': {
+      id: '/results'
+      path: '/results'
+      fullPath: '/results'
+      preLoaderRoute: typeof ResultsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/shelf/add': {
-      id: '/shelf/add'
-      path: '/shelf/add'
-      fullPath: '/shelf/add'
-      preLoaderRoute: typeof ShelfAddRouteImport
+    '/routine': {
+      id: '/routine'
+      path: '/routine'
+      fullPath: '/routine'
+      preLoaderRoute: typeof RoutineRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/shelf/$productId': {
-      id: '/shelf/$productId'
-      path: '/shelf/$productId'
-      fullPath: '/shelf/$productId'
-      preLoaderRoute: typeof ShelfProductIdRouteImport
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scan/check-in': {
-      id: '/scan/check-in'
-      path: '/scan/check-in'
-      fullPath: '/scan/check-in'
-      preLoaderRoute: typeof ScanCheckInRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ingredients/$ingredientId': {
-      id: '/ingredients/$ingredientId'
-      path: '/ingredients/$ingredientId'
-      fullPath: '/ingredients/$ingredientId'
-      preLoaderRoute: typeof IngredientsIngredientIdRouteImport
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.well-known/oauth-protected-resource': {
@@ -381,11 +352,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+    '/api/skin-analysis': {
+      id: '/api/skin-analysis'
+      path: '/api/skin-analysis'
+      fullPath: '/api/skin-analysis'
+      preLoaderRoute: typeof ApiSkinAnalysisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ingredients/': {
+      id: '/ingredients/'
+      path: '/ingredients'
+      fullPath: '/ingredients/'
+      preLoaderRoute: typeof IngredientsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ingredients/$ingredientId': {
+      id: '/ingredients/$ingredientId'
+      path: '/ingredients/$ingredientId'
+      fullPath: '/ingredients/$ingredientId'
+      preLoaderRoute: typeof IngredientsIngredientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan/': {
+      id: '/scan/'
+      path: '/scan'
+      fullPath: '/scan/'
+      preLoaderRoute: typeof ScanIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scan/check-in': {
+      id: '/scan/check-in'
+      path: '/scan/check-in'
+      fullPath: '/scan/check-in'
+      preLoaderRoute: typeof ScanCheckInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shelf/': {
+      id: '/shelf/'
+      path: '/shelf'
+      fullPath: '/shelf/'
+      preLoaderRoute: typeof ShelfIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shelf/$productId': {
+      id: '/shelf/$productId'
+      path: '/shelf/$productId'
+      fullPath: '/shelf/$productId'
+      preLoaderRoute: typeof ShelfProductIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shelf/add': {
+      id: '/shelf/add'
+      path: '/shelf/add'
+      fullPath: '/shelf/add'
+      preLoaderRoute: typeof ShelfAddRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.mcp/invoke-tool/$tool': {
@@ -410,6 +430,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ApiSkinAnalysisRoute: ApiSkinAnalysisRoute,
   IngredientsIngredientIdRoute: IngredientsIngredientIdRoute,
   ScanCheckInRoute: ScanCheckInRoute,
   ShelfProductIdRoute: ShelfProductIdRoute,

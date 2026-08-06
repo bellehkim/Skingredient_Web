@@ -1,3 +1,5 @@
+/** Every field is 0-100 where higher = healthier/better — matches YouCam's `ui_score`
+ * convention directly (see normalize() in src/routes/api/skin-analysis.ts). */
 export interface SkinAnalysisResult {
   redness: number;
   hydration: number;

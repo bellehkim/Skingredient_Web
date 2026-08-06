@@ -1,8 +1,4 @@
-import type {
-  DailyRecommendation,
-  RecommendationInput,
-  SkinDirection,
-} from "./types";
+import type { DailyRecommendation, RecommendationInput, SkinDirection } from "./types";
 
 const DISPLAY: Record<SkinDirection, string> = {
   "barrier-recovery": "Barrier Recovery",
@@ -31,14 +27,15 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
     prioritized = ["Ceramides", "Panthenol", "Glycerin", "Squalane"];
     avoided = ["Retinoids", "AHA", "BHA", "Benzoyl Peroxide", "Strong Vitamin C", "Fragrance"];
     risk = "high";
-    explanation = "Your skin looks highly reactive. Pausing strong actives and focusing on gentle barrier support.";
-  } else if (analysis.redness >= 65 && analysis.hydration <= 55) {
+    explanation =
+      "Your skin looks highly reactive. Pausing strong actives and focusing on gentle barrier support.";
+  } else if (analysis.redness <= 35 && analysis.hydration <= 55) {
     direction = "barrier-recovery";
     prioritized = ["Ceramides", "Panthenol", "Glycerin", "Beta-Glucan", "Squalane"];
     avoided = ["Retinoids", "AHA", "BHA", "Benzoyl Peroxide", "Strong Vitamin C"];
     risk = "moderate";
     explanation = "Your skin looks dehydrated and slightly reactive today.";
-  } else if (analysis.acne >= 65) {
+  } else if (analysis.acne <= 35) {
     direction = "blemish-control";
     prioritized = ["Salicylic Acid", "Azelaic Acid", "Niacinamide"];
     avoided = ["Multiple exfoliating actives at once", "Heavy occlusives"];
@@ -50,13 +47,13 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
     avoided = ["Alcohol", "Strong exfoliants"];
     risk = "low";
     explanation = "Your skin needs a hydration boost today.";
-  } else if (analysis.oiliness >= 70 && analysis.hydration > 45) {
+  } else if (analysis.oiliness <= 30 && analysis.hydration > 45) {
     direction = "oil-balance";
     prioritized = ["Niacinamide", "Lightweight hydrators"];
     avoided = ["Heavy occlusives"];
     risk = "low";
     explanation = "Balance oil without over-drying your skin.";
-  } else if (analysis.texture >= 65) {
+  } else if (analysis.texture <= 35) {
     direction = "texture-renewal";
     prioritized = ["Gentle PHA", "Niacinamide"];
     avoided = ["Combining multiple strong exfoliants"];
@@ -70,9 +67,7 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
   }
 
   if (ingredientHistory) {
-    prioritized = prioritized.filter(
-      (i) => ingredientHistory[i.toLowerCase()] !== "irritating",
-    );
+    prioritized = prioritized.filter((i) => ingredientHistory[i.toLowerCase()] !== "irritating");
   }
 
   const lowerSens = sensitivities.map((s) => s.toLowerCase());

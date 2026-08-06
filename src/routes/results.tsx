@@ -4,6 +4,7 @@ import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
 import { useAppStore } from "@/lib/appStore";
+import { getMetricLabel } from "@/lib/metricStatus";
 
 export const Route = createFileRoute("/results")({
   head: () => ({ meta: [{ title: "Your Results — Skingredient" }] }),
@@ -12,8 +13,14 @@ export const Route = createFileRoute("/results")({
 
 function Results() {
   const { analysis, recommendation } = useAppStore();
+  // All four inputs already use "higher = healthier" (see SkinAnalysisResult /
+  // normalize() in src/routes/api/skin-analysis.ts), so this is a straight
+  // weighted average — no inversion needed.
   const score = Math.round(
-    100 - (analysis.redness * 0.35 + (100 - analysis.hydration) * 0.3 + analysis.acne * 0.15 + Math.abs(analysis.oiliness - 50) * 0.2) * 0.5,
+    analysis.redness * 0.35 +
+      analysis.hydration * 0.3 +
+      analysis.acne * 0.15 +
+      analysis.oiliness * 0.2,
   );
 
   return (
@@ -25,77 +32,108 @@ function Results() {
       />
       <PageContainer width="wide">
         <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
-        {/* Hero result card */}
-        <section
-          className="relative overflow-hidden rounded-3xl p-5 shadow-soft lg:p-7"
-          style={{ background: "linear-gradient(140deg, #D9CCFA 0%, #C6D8FF 60%, #E7F0FF 100%)" }}
-        >
-          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/40 blur-2xl" />
-          <p className="text-[11px] font-bold tracking-[0.18em] text-ink/70">OVERALL CONDITION</p>
-          <div className="mt-1 flex items-start justify-between">
-            <div>
-              <h2 className="text-[30px] font-bold text-ink">Reactive</h2>
-              <p className="mt-2 max-w-[190px] text-[13px] leading-relaxed text-ink/80">
-                Pay attention to redness and strengthen your barrier.
-              </p>
+          {/* Hero result card */}
+          <section
+            className="relative overflow-hidden rounded-3xl p-5 shadow-soft lg:p-7"
+            style={{ background: "linear-gradient(140deg, #D9CCFA 0%, #C6D8FF 60%, #E7F0FF 100%)" }}
+          >
+            <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/40 blur-2xl" />
+            <p className="text-[11px] font-bold tracking-[0.18em] text-ink/70">OVERALL CONDITION</p>
+            <div className="mt-1 flex items-start justify-between">
+              <div>
+                <h2 className="text-[30px] font-bold text-ink">Reactive</h2>
+                <p className="mt-2 max-w-[190px] text-[13px] leading-relaxed text-ink/80">
+                  Pay attention to redness and strengthen your barrier.
+                </p>
+              </div>
+              <ScoreRing value={score} />
             </div>
-            <ScoreRing value={score} />
-          </div>
-        </section>
+          </section>
 
-        {/* Metrics */}
-        <section className="mt-4 rounded-3xl border border-hairline bg-white p-2 px-5 shadow-soft lg:mt-0">
-          <MetricBar name="Redness" value={analysis.redness} label="High" color="coral" />
-          <div className="border-t border-hairline" />
-          <MetricBar name="Hydration" value={analysis.hydration} label="Low" color="aqua" />
-          <div className="border-t border-hairline" />
-          <MetricBar name="Acne" value={analysis.acne} label="Low" color="sage" />
-          <div className="border-t border-hairline" />
-          <MetricBar name="Oiliness" value={analysis.oiliness} label="Normal" color="sun" />
-        </section>
+          {/* Metrics */}
+          <section className="mt-4 rounded-3xl border border-hairline bg-white p-2 px-5 shadow-soft lg:mt-0">
+            <MetricBar
+              name="Redness"
+              value={analysis.redness}
+              label={getMetricLabel(analysis.redness)}
+              color="coral"
+            />
+            <div className="border-t border-hairline" />
+            <MetricBar
+              name="Hydration"
+              value={analysis.hydration}
+              label={getMetricLabel(analysis.hydration)}
+              color="aqua"
+            />
+            <div className="border-t border-hairline" />
+            <MetricBar
+              name="Acne"
+              value={analysis.acne}
+              label={getMetricLabel(analysis.acne)}
+              color="sage"
+            />
+            <div className="border-t border-hairline" />
+            <MetricBar
+              name="Oiliness"
+              value={analysis.oiliness}
+              label={getMetricLabel(analysis.oiliness)}
+              color="sun"
+            />
+          </section>
         </div>
 
         <div className="grid items-start gap-4 lg:grid-cols-2">
-        {/* What your skin needs */}
-        <section
-          className="mt-4 flex items-center gap-4 rounded-3xl p-5 shadow-soft"
-          style={{ background: "linear-gradient(120deg, #EAF6FF 0%, #F3F9FF 100%)" }}
-        >
-          <div>
-            <h3 className="text-[16px] font-semibold text-ink">What your skin needs today</h3>
-            <p className="mt-1 text-[13px] text-ink-muted">
-              Focus on calming and barrier-supporting ingredients.
-            </p>
-          </div>
-          <div className="ml-auto">
-            <Bubble />
-          </div>
-        </section>
+          {/* What your skin needs */}
+          <section
+            className="mt-4 flex items-center gap-4 rounded-3xl p-5 shadow-soft"
+            style={{ background: "linear-gradient(120deg, #EAF6FF 0%, #F3F9FF 100%)" }}
+          >
+            <div>
+              <h3 className="text-[16px] font-semibold text-ink">What your skin needs today</h3>
+              <p className="mt-1 text-[13px] text-ink-muted">
+                Focus on calming and barrier-supporting ingredients.
+              </p>
+            </div>
+            <div className="ml-auto">
+              <Bubble />
+            </div>
+          </section>
 
-        {/* Summary */}
-        <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft">
-          <h3 className="text-[15px] font-semibold text-ink">Today's plan</h3>
-          <p className="mt-1 text-[13px] text-ink-muted">
-            Direction: <span className="font-semibold text-ink">{recommendation.displayName}</span> · Risk:{" "}
-            <span className="font-semibold text-ink capitalize">{recommendation.riskLevel}</span>
-          </p>
-          <div className="mt-3">
-            <p className="text-[11px] font-bold tracking-[0.14em] text-sage">PRIORITIZE</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {recommendation.prioritizedIngredients.map((i) => (
-                <span key={i} className="rounded-full bg-sage-light px-3 py-1 text-[12px] font-medium text-sage">{i}</span>
-              ))}
+          {/* Summary */}
+          <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft">
+            <h3 className="text-[15px] font-semibold text-ink">Today's plan</h3>
+            <p className="mt-1 text-[13px] text-ink-muted">
+              Direction:{" "}
+              <span className="font-semibold text-ink">{recommendation.displayName}</span> · Risk:{" "}
+              <span className="font-semibold text-ink capitalize">{recommendation.riskLevel}</span>
+            </p>
+            <div className="mt-3">
+              <p className="text-[11px] font-bold tracking-[0.14em] text-sage">PRIORITIZE</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {recommendation.prioritizedIngredients.map((i) => (
+                  <span
+                    key={i}
+                    className="rounded-full bg-sage-light px-3 py-1 text-[12px] font-medium text-sage"
+                  >
+                    {i}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="mt-3">
-            <p className="text-[11px] font-bold tracking-[0.14em] text-coral">AVOID TODAY</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {recommendation.avoidedIngredients.map((i) => (
-                <span key={i} className="rounded-full bg-coral-light px-3 py-1 text-[12px] font-medium text-coral">{i}</span>
-              ))}
+            <div className="mt-3">
+              <p className="text-[11px] font-bold tracking-[0.14em] text-coral">AVOID TODAY</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {recommendation.avoidedIngredients.map((i) => (
+                  <span
+                    key={i}
+                    className="rounded-full bg-coral-light px-3 py-1 text-[12px] font-medium text-coral"
+                  >
+                    {i}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
         </div>
 
         <Link
@@ -104,7 +142,10 @@ function Results() {
         >
           See my product matches
         </Link>
-        <Link to="/insights" className="mt-2 block py-3 text-center text-[14px] font-medium text-brand">
+        <Link
+          to="/insights"
+          className="mt-2 block py-3 text-center text-[14px] font-medium text-brand"
+        >
           View detailed analysis
         </Link>
       </PageContainer>
@@ -119,9 +160,26 @@ function ScoreRing({ value }: { value: number }) {
   return (
     <div className="relative h-[86px] w-[86px]">
       <svg viewBox="0 0 80 80" className="h-full w-full -rotate-90">
-        <circle cx="40" cy="40" r={r} stroke="white" strokeOpacity=".5" strokeWidth="6" fill="none" />
-        <circle cx="40" cy="40" r={r} stroke="#7257E8" strokeWidth="6" fill="none"
-          strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} />
+        <circle
+          cx="40"
+          cy="40"
+          r={r}
+          stroke="white"
+          strokeOpacity=".5"
+          strokeWidth="6"
+          fill="none"
+        />
+        <circle
+          cx="40"
+          cy="40"
+          r={r}
+          stroke="#7257E8"
+          strokeWidth="6"
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={off}
+        />
       </svg>
       <div className="absolute inset-0 grid place-items-center leading-none">
         <div className="text-center">
