@@ -31,6 +31,7 @@ export const mockAnalysis: SkinAnalysisResult = {
   texture: 45,
   pores: 59,
   analyzedAt: new Date().toISOString(),
+  skinDirection: "Focus on calming redness while keeping your barrier supported today.",
 };
 
 export const mockProducts: Product[] = [

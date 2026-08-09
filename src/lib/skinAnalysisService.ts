@@ -15,6 +15,7 @@ export const mockSkinAnalysisService: SkinAnalysisService = {
       texture: 55,
       pores: 41,
       analyzedAt: new Date().toISOString(),
+      skinDirection: "Focus on calming redness while keeping your barrier supported today.",
     };
   },
 };

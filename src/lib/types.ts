@@ -8,6 +8,10 @@ export interface SkinAnalysisResult {
   texture: number;
   pores: number;
   analyzedAt: string;
+  /** AI-generated "Today's Skin Direction" sentence (src/lib/skinDirectionService.ts).
+   * Missing/null if generation hasn't run yet or failed — callers fall back to
+   * recommendation.explanation rather than treating it as an error state. */
+  skinDirection?: string | null;
 }
 
 export type SkinDirection =

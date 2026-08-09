@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { Calendar } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
@@ -12,7 +13,37 @@ export const Route = createFileRoute("/results")({
 });
 
 function Results() {
-  const { analysis, recommendation } = useAppStore();
+  const { analysis, recommendation, setAnalysis } = useAppStore();
+  const [retryingDirection, setRetryingDirection] = useState(false);
+
+  // Manual retry only — never runs on render/mount/navigation, only on click.
+  // Doesn't touch YouCam or re-run the scan; just re-asks for a sentence from
+  // scores we already have, and merges the result into the existing analysis.
+  const retryDirection = async () => {
+    setRetryingDirection(true);
+    try {
+      const res = await fetch("/api/skin-direction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          redness: analysis.redness,
+          hydration: analysis.hydration,
+          acne: analysis.acne,
+          oiliness: analysis.oiliness,
+          texture: analysis.texture,
+          pores: analysis.pores,
+        }),
+      });
+      const body = await res.json();
+      if (res.ok && body.skinDirection) {
+        setAnalysis({ ...analysis, skinDirection: body.skinDirection });
+      }
+    } catch {
+      // Stay in the failed state — the "Try again" action remains available.
+    } finally {
+      setRetryingDirection(false);
+    }
+  };
   // All four inputs already use "higher = healthier" (see SkinAnalysisResult /
   // normalize() in src/routes/api/skin-analysis.ts), so this is a straight
   // weighted average — no inversion needed.
@@ -90,9 +121,21 @@ function Results() {
           >
             <div>
               <h3 className="text-[16px] font-semibold text-ink">What your skin needs today</h3>
-              <p className="mt-1 text-[13px] text-ink-muted">
-                Focus on calming and barrier-supporting ingredients.
-              </p>
+              {analysis.skinDirection ? (
+                <p className="mt-1 text-[13px] text-ink-muted">{analysis.skinDirection}</p>
+              ) : (
+                <div className="mt-1">
+                  <p className="text-[13px] text-coral">Couldn't generate today's direction.</p>
+                  <button
+                    type="button"
+                    onClick={retryDirection}
+                    disabled={retryingDirection}
+                    className="mt-1.5 text-[12.5px] font-semibold text-brand disabled:opacity-50"
+                  >
+                    {retryingDirection ? "Retrying…" : "Try again"}
+                  </button>
+                </div>
+              )}
             </div>
             <div className="ml-auto">
               <Bubble />

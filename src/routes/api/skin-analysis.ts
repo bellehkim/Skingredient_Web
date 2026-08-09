@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { SkinAnalysisResult } from "@/lib/types";
+import { generateSkinDirection } from "@/lib/skinDirectionService";
 
 const YOUCAM_API_BASE = "https://yce-api-01.makeupar.com";
 
@@ -180,7 +181,14 @@ export const Route = createFileRoute("/api/skin-analysis")({
           const output = await pollTask(apiKey, taskId);
           const result = normalize(output);
 
-          return Response.json(result);
+          // Generate the "Today's Skin Direction" sentence once, as part of
+          // this same new-analysis request. A failure here must not fail the
+          // scan — the client still gets valid YouCam scores with
+          // skinDirection: null, and can retry generation alone via
+          // /api/skin-direction without re-scanning.
+          const skinDirection = await generateSkinDirection(result);
+
+          return Response.json({ ...result, skinDirection });
         } catch (error) {
           console.error("skin-analysis proxy error", error);
           const message = error instanceof Error ? error.message : "Skin analysis failed";
