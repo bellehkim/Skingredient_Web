@@ -3,11 +3,7 @@ import { z } from "zod";
 import { generateRecommendation } from "@/lib/recommendationEngine";
 import type { SkinAnalysisResult } from "@/lib/types";
 
-const metric = z
-  .number()
-  .min(0)
-  .max(100)
-  .describe("0-100 score from the daily skin analysis.");
+const metric = z.number().min(0).max(100).describe("0-100 score from the daily skin analysis.");
 
 export default defineTool({
   name: "get_recommendation",
@@ -17,10 +13,11 @@ export default defineTool({
   inputSchema: {
     redness: metric,
     hydration: metric,
-    acne: metric,
     oiliness: metric,
-    texture: metric,
+    acne: metric,
     pores: metric,
+    texture: metric,
+    ageSpots: metric,
     symptoms: z
       .array(z.string())
       .optional()
@@ -35,9 +32,26 @@ export default defineTool({
       .describe("Timing of any upcoming event that should influence today's plan."),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-  handler: ({ redness, hydration, acne, oiliness, texture, pores, symptoms, sensitivities, eventTiming }) => {
+  handler: ({
+    redness,
+    hydration,
+    oiliness,
+    acne,
+    pores,
+    texture,
+    ageSpots,
+    symptoms,
+    sensitivities,
+    eventTiming,
+  }) => {
     const analysis: SkinAnalysisResult = {
-      redness, hydration, acne, oiliness, texture, pores,
+      redness,
+      hydration,
+      oiliness,
+      acne,
+      pores,
+      texture,
+      ageSpots,
       analyzedAt: new Date().toISOString(),
     };
     const rec = generateRecommendation({
@@ -46,9 +60,7 @@ export default defineTool({
       sensitivities: sensitivities ?? [],
       recentActives: [],
       upcomingEvent:
-        eventTiming && eventTiming !== "none"
-          ? { type: "event", timing: eventTiming }
-          : undefined,
+        eventTiming && eventTiming !== "none" ? { type: "event", timing: eventTiming } : undefined,
     });
     return {
       content: [

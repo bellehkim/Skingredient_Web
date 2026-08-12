@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   Bell,
   ScanFace,
@@ -16,6 +17,7 @@ import {
 } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { useAppStore } from "@/lib/appStore";
+import { updateSkinDirection } from "@/lib/data/analyses";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,7 +34,52 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { user, analysis, recommendation, event, scanCompletedToday } = useAppStore();
+  const { user, analysis, recommendation, event, scanCompletedToday, setAnalysis } = useAppStore();
+  const [retryingDirection, setRetryingDirection] = useState(false);
+
+  // Manual retry only — never runs on mount/refresh/navigation/re-render, only
+  // on click. Doesn't touch YouCam or re-run the scan; just re-asks for a
+  // sentence from scores already in state, and merges the result back in.
+  // Preserves the one-generation-per-analysis rule: this is the sole path
+  // that can call Claude again, and only fires on an explicit user action.
+  const retryDirection = async () => {
+    setRetryingDirection(true);
+    try {
+      const res = await fetch("/api/skin-direction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          redness: analysis.redness,
+          hydration: analysis.hydration,
+          acne: analysis.acne,
+          oiliness: analysis.oiliness,
+          texture: analysis.texture,
+          pores: analysis.pores,
+        }),
+      });
+      const body = await res.json();
+      if (res.ok && body.skinDirection) {
+        // The one narrow exception to "analyses are immutable" — patches
+        // skin_direction on the existing row rather than inserting a new
+        // one. Only runs if this analysis was actually persisted (analysis.id
+        // set); otherwise just update in-memory state as before.
+        if (analysis.id) {
+          try {
+            const updated = await updateSkinDirection(analysis.id, body.skinDirection);
+            setAnalysis(updated);
+            return;
+          } catch (updateError) {
+            console.error("Failed to persist retried skin direction", updateError);
+          }
+        }
+        setAnalysis({ ...analysis, skinDirection: body.skinDirection });
+      }
+    } catch {
+      // Stay in the failed state — the "Try again" action remains available.
+    } finally {
+      setRetryingDirection(false);
+    }
+  };
 
   return (
     <AppShell>
@@ -79,11 +126,29 @@ function Home() {
                 <h2 className="mt-1 text-[26px] font-bold leading-tight lg:text-[32px]">
                   {recommendation.displayName}
                 </h2>
-                <p className="mt-1.5 max-w-[280px] text-[13.5px] leading-relaxed text-white/90 lg:max-w-[420px] lg:text-[14.5px]">
-                  {analysis.skinDirection ??
-                    recommendation.explanation ??
-                    "Your skin looks dehydrated and slightly reactive today."}
-                </p>
+                {analysis.skinDirection ? (
+                  <p className="mt-1.5 max-w-[280px] text-[13.5px] leading-relaxed text-white/90 lg:max-w-[420px] lg:text-[14.5px]">
+                    {analysis.skinDirection}
+                  </p>
+                ) : (
+                  <div className="mt-1.5 max-w-[280px] lg:max-w-[420px]">
+                    <p className="text-[13.5px] leading-relaxed text-white/90 lg:text-[14.5px]">
+                      Couldn't generate today's skin direction.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        retryDirection();
+                      }}
+                      disabled={retryingDirection}
+                      className="mt-1 text-[12.5px] font-semibold text-white underline underline-offset-2 disabled:opacity-60"
+                    >
+                      {retryingDirection ? "Retrying…" : "Try again"}
+                    </button>
+                  </div>
+                )}
                 <span className="absolute bottom-5 right-5 inline-flex items-center gap-1.5 rounded-full bg-white/25 px-3 py-1.5 text-[11.5px] font-semibold text-white backdrop-blur">
                   View today's plan <ArrowRight size={13} />
                 </span>

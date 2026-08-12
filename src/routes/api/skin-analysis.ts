@@ -4,9 +4,18 @@ import { generateSkinDirection } from "@/lib/skinDirectionService";
 
 const YOUCAM_API_BASE = "https://yce-api-01.makeupar.com";
 
-// Kept to our existing metric set (redness, hydration, acne, oiliness, texture, pores) —
-// SD tier field names, see https://docs.perfectcorp.com/reference/ai_skin_analysis
-const DST_ACTIONS = ["redness", "oiliness", "moisture", "acne", "texture", "pore"] as const;
+// Kept to our finalized metric set (redness, hydration, oiliness, acne, pores,
+// texture, ageSpots) — SD tier field names, see
+// https://docs.perfectcorp.com/reference/ai_skin_analysis
+const DST_ACTIONS = [
+  "redness",
+  "oiliness",
+  "moisture",
+  "acne",
+  "texture",
+  "pore",
+  "age_spot",
+] as const;
 
 const POLL_INTERVAL_MS = 1500;
 const POLL_TIMEOUT_MS = 30_000;
@@ -136,18 +145,20 @@ export function scoreFor(output: YouCamTaskResultItem[], type: string): number |
 export function normalize(output: YouCamTaskResultItem[]): SkinAnalysisResult {
   const redness = scoreFor(output, "redness");
   const hydration = scoreFor(output, "moisture");
-  const acne = scoreFor(output, "acne");
   const oiliness = scoreFor(output, "oiliness");
-  const texture = scoreFor(output, "texture");
+  const acne = scoreFor(output, "acne");
   const pores = scoreFor(output, "pore");
+  const texture = scoreFor(output, "texture");
+  const ageSpots = scoreFor(output, "age_spot");
 
   if (
     redness === undefined ||
     hydration === undefined ||
-    acne === undefined ||
     oiliness === undefined ||
+    acne === undefined ||
+    pores === undefined ||
     texture === undefined ||
-    pores === undefined
+    ageSpots === undefined
   ) {
     throw new Error("YouCam response is missing expected skin concerns");
   }
@@ -155,10 +166,11 @@ export function normalize(output: YouCamTaskResultItem[]): SkinAnalysisResult {
   return {
     redness,
     hydration,
-    acne,
     oiliness,
-    texture,
+    acne,
     pores,
+    texture,
+    ageSpots,
     analyzedAt: new Date().toISOString(),
   };
 }
@@ -188,7 +200,10 @@ export const Route = createFileRoute("/api/skin-analysis")({
           // /api/skin-direction without re-scanning.
           const skinDirection = await generateSkinDirection(result);
 
-          return Response.json({ ...result, skinDirection });
+          // youcamRaw: the raw task output, already in memory — included so
+          // the client can persist it (src/lib/data/analyses.ts) for future
+          // debugging. No headers, no auth, no image.
+          return Response.json({ ...result, skinDirection, youcamRaw: output });
         } catch (error) {
           console.error("skin-analysis proxy error", error);
           const message = error instanceof Error ? error.message : "Skin analysis failed";

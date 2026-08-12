@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { Calendar } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
 import { useAppStore } from "@/lib/appStore";
 import { getMetricLabel } from "@/lib/metricStatus";
+import { deriveOverallCondition } from "@/lib/overallCondition";
+import { deriveSkinType } from "@/lib/skinType";
+import { METRIC_COLORS } from "@/lib/metricColors";
 
 export const Route = createFileRoute("/results")({
   head: () => ({ meta: [{ title: "Your Results — Skingredient" }] }),
@@ -13,46 +15,15 @@ export const Route = createFileRoute("/results")({
 });
 
 function Results() {
-  const { analysis, recommendation, setAnalysis } = useAppStore();
-  const [retryingDirection, setRetryingDirection] = useState(false);
-
-  // Manual retry only — never runs on render/mount/navigation, only on click.
-  // Doesn't touch YouCam or re-run the scan; just re-asks for a sentence from
-  // scores we already have, and merges the result into the existing analysis.
-  const retryDirection = async () => {
-    setRetryingDirection(true);
-    try {
-      const res = await fetch("/api/skin-direction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          redness: analysis.redness,
-          hydration: analysis.hydration,
-          acne: analysis.acne,
-          oiliness: analysis.oiliness,
-          texture: analysis.texture,
-          pores: analysis.pores,
-        }),
-      });
-      const body = await res.json();
-      if (res.ok && body.skinDirection) {
-        setAnalysis({ ...analysis, skinDirection: body.skinDirection });
-      }
-    } catch {
-      // Stay in the failed state — the "Try again" action remains available.
-    } finally {
-      setRetryingDirection(false);
-    }
-  };
-  // All four inputs already use "higher = healthier" (see SkinAnalysisResult /
-  // normalize() in src/routes/api/skin-analysis.ts), so this is a straight
-  // weighted average — no inversion needed.
-  const score = Math.round(
-    analysis.redness * 0.35 +
-      analysis.hydration * 0.3 +
-      analysis.acne * 0.15 +
-      analysis.oiliness * 0.2,
-  );
+  const { analysis, recommendation, recommendedProducts, products, addToShelf } = useAppStore();
+  const {
+    score,
+    label: conditionLabel,
+    description: conditionDescription,
+  } = deriveOverallCondition(analysis);
+  const skinType = deriveSkinType(analysis);
+  const shelfIds = new Set(products.map((p) => p.id));
+  const recommendedPicks = recommendedProducts.filter((p) => p.status === "use-today").slice(0, 4);
 
   return (
     <AppShell title="Your Results" back="/scan">
@@ -63,87 +34,82 @@ function Results() {
       />
       <PageContainer width="wide">
         <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
-          {/* Hero result card */}
+          {/* Overall Condition */}
           <section
-            className="relative overflow-hidden rounded-3xl p-5 shadow-soft lg:p-7"
+            className="relative overflow-hidden rounded-3xl p-5 shadow-soft lg:col-start-1 lg:row-start-1 lg:p-7"
             style={{ background: "linear-gradient(140deg, #D9CCFA 0%, #C6D8FF 60%, #E7F0FF 100%)" }}
           >
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/40 blur-2xl" />
             <p className="text-[11px] font-bold tracking-[0.18em] text-ink/70">OVERALL CONDITION</p>
             <div className="mt-1 flex items-start justify-between">
               <div>
-                <h2 className="text-[30px] font-bold text-ink">Reactive</h2>
+                <h2 className="text-[30px] font-bold text-ink">{conditionLabel}</h2>
+                <p className="mt-3 text-[10px] font-bold tracking-[0.14em] text-ink/50">
+                  SKIN TYPE
+                </p>
+                <p className="text-[13px] font-semibold text-ink/80">{skinType.label}</p>
                 <p className="mt-2 max-w-[190px] text-[13px] leading-relaxed text-ink/80">
-                  Pay attention to redness and strengthen your barrier.
+                  {conditionDescription}
                 </p>
               </div>
               <ScoreRing value={score} />
             </div>
           </section>
 
-          {/* Metrics */}
-          <section className="mt-4 rounded-3xl border border-hairline bg-white p-2 px-5 shadow-soft lg:mt-0">
+          {/* Metrics — all 7 */}
+          <section className="mt-4 rounded-3xl border border-hairline bg-white p-2 px-5 shadow-soft lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:mt-0">
             <MetricBar
               name="Redness"
               value={analysis.redness}
               label={getMetricLabel(analysis.redness)}
-              color="coral"
+              color={METRIC_COLORS.redness}
             />
             <div className="border-t border-hairline" />
             <MetricBar
               name="Hydration"
               value={analysis.hydration}
               label={getMetricLabel(analysis.hydration)}
-              color="aqua"
-            />
-            <div className="border-t border-hairline" />
-            <MetricBar
-              name="Acne"
-              value={analysis.acne}
-              label={getMetricLabel(analysis.acne)}
-              color="sage"
+              color={METRIC_COLORS.hydration}
             />
             <div className="border-t border-hairline" />
             <MetricBar
               name="Oiliness"
               value={analysis.oiliness}
               label={getMetricLabel(analysis.oiliness)}
-              color="sun"
+              color={METRIC_COLORS.oiliness}
+            />
+            <div className="border-t border-hairline" />
+            <MetricBar
+              name="Acne"
+              value={analysis.acne}
+              label={getMetricLabel(analysis.acne)}
+              color={METRIC_COLORS.acne}
+            />
+            <div className="border-t border-hairline" />
+            <MetricBar
+              name="Pores"
+              value={analysis.pores}
+              label={getMetricLabel(analysis.pores)}
+              color={METRIC_COLORS.pores}
+            />
+            <div className="border-t border-hairline" />
+            <MetricBar
+              name="Texture"
+              value={analysis.texture}
+              label={getMetricLabel(analysis.texture)}
+              color={METRIC_COLORS.texture}
+            />
+            <div className="border-t border-hairline" />
+            <MetricBar
+              name="Dark Spots"
+              value={analysis.ageSpots}
+              label={getMetricLabel(analysis.ageSpots)}
+              color={METRIC_COLORS.ageSpots}
             />
           </section>
-        </div>
 
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          {/* What your skin needs */}
-          <section
-            className="mt-4 flex items-center gap-4 rounded-3xl p-5 shadow-soft"
-            style={{ background: "linear-gradient(120deg, #EAF6FF 0%, #F3F9FF 100%)" }}
-          >
-            <div>
-              <h3 className="text-[16px] font-semibold text-ink">What your skin needs today</h3>
-              {analysis.skinDirection ? (
-                <p className="mt-1 text-[13px] text-ink-muted">{analysis.skinDirection}</p>
-              ) : (
-                <div className="mt-1">
-                  <p className="text-[13px] text-coral">Couldn't generate today's direction.</p>
-                  <button
-                    type="button"
-                    onClick={retryDirection}
-                    disabled={retryingDirection}
-                    className="mt-1.5 text-[12.5px] font-semibold text-brand disabled:opacity-50"
-                  >
-                    {retryingDirection ? "Retrying…" : "Try again"}
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="ml-auto">
-              <Bubble />
-            </div>
-          </section>
-
-          {/* Summary */}
-          <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft">
+          {/* Today's Plan — moved directly under Overall Condition */}
+          <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft lg:col-start-1 lg:row-start-2">
             <h3 className="text-[15px] font-semibold text-ink">Today's plan</h3>
             <p className="mt-1 text-[13px] text-ink-muted">
               Direction:{" "}
@@ -178,6 +144,40 @@ function Results() {
             </div>
           </section>
         </div>
+
+        {/* Recommended products — from the catalog, matched to today's plan.
+            Display only: nothing here is on My Shelf until explicitly saved. */}
+        {recommendedPicks.length > 0 && (
+          <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft">
+            <h3 className="text-[15px] font-semibold text-ink">Recommended for you</h3>
+            <div className="mt-3 space-y-2">
+              {recommendedPicks.map((p) => {
+                const saved = shelfIds.has(p.id);
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-hairline p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[13px] text-ink-muted">{p.brand}</p>
+                      <p className="truncate text-[14px] font-semibold text-ink">{p.name}</p>
+                      <p className="mt-0.5 text-[12px] text-ink-muted">{p.reason}</p>
+                    </div>
+                    <button
+                      onClick={() => addToShelf(p.id)}
+                      disabled={saved}
+                      className={`shrink-0 rounded-full px-3.5 py-2 text-[12.5px] font-semibold ${
+                        saved ? "bg-surface-muted text-ink-muted" : "bg-brand text-white"
+                      }`}
+                    >
+                      {saved ? "Saved" : "Save to Shelf"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <Link
           to="/shelf"
@@ -231,21 +231,5 @@ function ScoreRing({ value }: { value: number }) {
         </div>
       </div>
     </div>
-  );
-}
-
-function Bubble() {
-  return (
-    <svg width="72" height="72" viewBox="0 0 72 72">
-      <defs>
-        <radialGradient id="b" cx=".35" cy=".35">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="60%" stopColor="#CDEEFF" />
-          <stop offset="100%" stopColor="#7BB8F0" />
-        </radialGradient>
-      </defs>
-      <circle cx="36" cy="36" r="30" fill="url(#b)" opacity=".9" />
-      <circle cx="26" cy="26" r="7" fill="white" opacity=".7" />
-    </svg>
   );
 }

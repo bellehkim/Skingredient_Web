@@ -3,15 +3,27 @@
 export interface SkinAnalysisResult {
   redness: number;
   hydration: number;
-  acne: number;
   oiliness: number;
-  texture: number;
+  acne: number;
   pores: number;
+  texture: number;
+  ageSpots: number;
   analyzedAt: string;
   /** AI-generated "Today's Skin Direction" sentence (src/lib/skinDirectionService.ts).
    * Missing/null if generation hasn't run yet or failed — callers fall back to
    * recommendation.explanation rather than treating it as an error state. */
   skinDirection?: string | null;
+  /** When skinDirection was generated (initial generation or a successful retry). */
+  skinDirectionGeneratedAt?: string | null;
+
+  // Persistence metadata (src/lib/data/analyses.ts) — present once this
+  // analysis has been saved to/read from skin_analyses; absent for
+  // not-yet-persisted or mock data. Carried on the same object (rather than
+  // a separate wrapper type) so the DB row can become the app's source of
+  // truth in place, per the scan-flow design in scan.index.tsx.
+  id?: string;
+  createdAt?: string;
+  algorithmVersion?: string;
 }
 
 export type SkinDirection =

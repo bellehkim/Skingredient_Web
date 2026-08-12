@@ -1,7 +1,11 @@
 import type { SkinAnalysisResult } from "./types";
+import type { YouCamTaskResultItem } from "@/routes/api/skin-analysis";
 
 export interface SkinAnalysisService {
-  analyze(image?: Blob | null): Promise<SkinAnalysisResult>;
+  /** youcamRaw is present only from the real service — see analyses.ts createAnalysis(). */
+  analyze(
+    image?: Blob | null,
+  ): Promise<SkinAnalysisResult & { youcamRaw?: YouCamTaskResultItem[] }>;
 }
 
 export const mockSkinAnalysisService: SkinAnalysisService = {
@@ -10,10 +14,11 @@ export const mockSkinAnalysisService: SkinAnalysisService = {
     return {
       redness: 72,
       hydration: 48,
-      acne: 32,
       oiliness: 52,
-      texture: 55,
+      acne: 32,
       pores: 41,
+      texture: 55,
+      ageSpots: 64,
       analyzedAt: new Date().toISOString(),
       skinDirection: "Focus on calming redness while keeping your barrier supported today.",
     };

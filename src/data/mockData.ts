@@ -26,10 +26,11 @@ export const mockEvent: UpcomingEvent = {
 export const mockAnalysis: SkinAnalysisResult = {
   redness: 28,
   hydration: 48,
-  acne: 68,
   oiliness: 48,
-  texture: 45,
+  acne: 68,
   pores: 59,
+  texture: 45,
+  ageSpots: 72,
   analyzedAt: new Date().toISOString(),
   skinDirection: "Focus on calming redness while keeping your barrier supported today.",
 };

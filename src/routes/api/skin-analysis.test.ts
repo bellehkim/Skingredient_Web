@@ -12,6 +12,7 @@ const RAW_OUTPUT: YouCamTaskResultItem[] = [
   item("moisture", 73),
   item("redness", 81),
   item("acne", 99),
+  item("age_spot", 85),
 ];
 
 describe("normalize", () => {
@@ -31,6 +32,10 @@ describe("normalize", () => {
     expect(normalize(RAW_OUTPUT).pores).toBe(61);
   });
 
+  it("maps age_spot -> ageSpots, no inversion", () => {
+    expect(normalize(RAW_OUTPUT).ageSpots).toBe(85);
+  });
+
   it("matches the full expected mapping for a real sample response", () => {
     expect(normalize(RAW_OUTPUT)).toMatchObject({
       redness: 81,
@@ -39,6 +44,7 @@ describe("normalize", () => {
       oiliness: 68,
       texture: 76,
       pores: 61,
+      ageSpots: 85,
     });
   });
 
@@ -49,6 +55,7 @@ describe("normalize", () => {
     expect(result.oiliness).not.toBe(100 - 68);
     expect(result.texture).not.toBe(100 - 76);
     expect(result.pores).not.toBe(100 - 61);
+    expect(result.ageSpots).not.toBe(100 - 85);
   });
 
   it("keeps every score within the 0-100 range", () => {
@@ -60,6 +67,7 @@ describe("normalize", () => {
       result.oiliness,
       result.texture,
       result.pores,
+      result.ageSpots,
     ]) {
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(100);

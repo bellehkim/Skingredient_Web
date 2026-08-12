@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { skinAnalysisService, ANALYSIS_STEPS } from "@/lib/skinAnalysisService";
 import { useAppStore } from "@/lib/appStore";
+import { createAnalysis } from "@/lib/data/analyses";
 
 export const Route = createFileRoute("/scan/")({
   head: () => ({ meta: [{ title: "Skin Scan — Skingredient" }] }),
@@ -30,8 +31,21 @@ function Scan() {
     setScanning(true);
     setStep(0);
     try {
-      const result = await skinAnalysisService.analyze(image);
-      setAnalysis(result);
+      const { youcamRaw, ...result } = await skinAnalysisService.analyze(image);
+
+      // Persist once, then use the inserted row (generated id, created_at,
+      // algorithm_version) as the source of truth rather than the pre-insert
+      // in-memory object — see src/lib/data/analyses.ts. Best-effort: a save
+      // failure shouldn't break a scan that otherwise succeeded, so fall
+      // back to the in-memory result and keep going.
+      let saved = result;
+      try {
+        saved = await createAnalysis(result, youcamRaw);
+      } catch (saveError) {
+        console.error("Failed to save analysis", saveError);
+      }
+
+      setAnalysis(saved);
       setTimeout(() => navigate({ to: "/results" }), 300);
     } catch (err) {
       setScanning(false);
