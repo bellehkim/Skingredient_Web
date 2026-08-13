@@ -49,7 +49,9 @@ export const CATEGORY_COLORS: Record<string, string> = {
   "Toner/Essence": "#E9F5F2",
 };
 
-function labelsToCategories(labels: string[]): Set<string> {
+/** Exported for reuse by src/lib/routineComposer.ts — same label→category
+ * lookup, so "avoid this today" means the same thing in both places. */
+export function labelsToCategories(labels: string[]): Set<string> {
   const categories = labels
     .map((label) => INGREDIENT_LABEL_TO_CATEGORY[label.toLowerCase()])
     .filter((c): c is string => Boolean(c));

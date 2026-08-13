@@ -93,12 +93,6 @@ export const mockRednessTrend = [
   { day: "5/18", value: 58 },
 ];
 
-export const mockRoutine = {
-  day: "Tuesday, May 13",
-  morning: ["Cleanser", "Toner", "Serum", "Moisturizer", "Sunscreen"],
-  evening: ["Cleanser", "Serum", "Moisturizer"],
-};
-
 export const mockComparison = {
   from: "May 6",
   to: "Today",

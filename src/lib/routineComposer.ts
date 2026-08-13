@@ -1,0 +1,172 @@
+import type { CatalogProduct } from "./data/catalog";
+import { labelsToCategories } from "./productMatching";
+import type { DailyRecommendation, Product } from "./types";
+
+export type RoutinePeriod = "am" | "pm";
+export type RoutineSource = "shelf" | "recommended";
+
+export interface RoutineSlot {
+  label: string;
+  product: Product | null;
+  source: RoutineSource | null;
+}
+
+export interface Routine {
+  am: RoutineSlot[];
+  pm: RoutineSlot[];
+}
+
+// Functional categories treated as "strong actives" for AM/PM gating — the
+// same set recommendationEngine.ts already avoids outright on
+// pause-actives/barrier-recovery days (Retinoids, AHA, BHA, Benzoyl
+// Peroxide, Strong Vitamin C). Anything in this set is PM-only; anything
+// outside it (niacinamide, hyaluronic acid, ceramides, gentle PHA, ...) is
+// treated as safe for AM.
+const STRONG_ACTIVE_CATEGORIES = new Set([
+  "retinoid",
+  "glycolic_acid",
+  "salicylic_acid",
+  "benzoyl_peroxide",
+  "vitamin_c",
+]);
+
+const AM_SLOTS: { label: string; categories: string[] }[] = [
+  { label: "Cleanser", categories: ["Cleanser"] },
+  { label: "Serum or Treatment", categories: ["Serum", "Treatment"] },
+  { label: "Moisturizer", categories: ["Moisturizer"] },
+  { label: "Sunscreen", categories: ["Sunscreen"] },
+];
+
+const PM_SLOTS: { label: string; categories: string[] }[] = [
+  { label: "Cleanser", categories: ["Cleanser"] },
+  { label: "Serum or Treatment", categories: ["Serum", "Treatment"] },
+  { label: "Moisturizer", categories: ["Moisturizer"] },
+];
+
+function isCustomProduct(product: Product): boolean {
+  return product.id.startsWith("custom-");
+}
+
+function findCatalogRow(catalog: CatalogProduct[], productId: string): CatalogProduct | undefined {
+  return catalog.find((row) => String(row.product_id) === productId);
+}
+
+function functionalCategoriesOf(catalogRow: CatalogProduct): Set<string> {
+  const categories = new Set<string>();
+  for (const { ingredients } of catalogRow.product_ingredients) {
+    for (const f of ingredients.ingredient_functions) categories.add(f.functional_category);
+  }
+  return categories;
+}
+
+/**
+ * Custom (manually-added) shelf products carry no ingredient-function data
+ * — per product owner's explicit MVP safety rule, a custom Treatment is
+ * assumed to be a strong active (PM-only) since we can't verify otherwise;
+ * every other custom category is assumed AM/PM-safe. Catalog products use
+ * their real ingredient functional_category data instead of a guess.
+ */
+function isStrongActive(product: Product, catalog: CatalogProduct[]): boolean {
+  if (isCustomProduct(product)) return product.category === "Treatment";
+  const row = findCatalogRow(catalog, product.id);
+  if (!row) return false;
+  const categories = functionalCategoriesOf(row);
+  for (const c of STRONG_ACTIVE_CATEGORIES) if (categories.has(c)) return true;
+  return false;
+}
+
+function isAllowedInPeriod(
+  product: Product,
+  period: RoutinePeriod,
+  catalog: CatalogProduct[],
+): boolean {
+  if (product.category === "Sunscreen") return period === "am";
+  if (period === "pm") return true;
+  return !isStrongActive(product, catalog);
+}
+
+/** Custom products have no ingredient data, so they can never be flagged as
+ * containing a schedule-avoided category — only catalog-backed products are checked. */
+function containsAvoidedCategory(
+  product: Product,
+  avoidedCategories: Set<string>,
+  catalog: CatalogProduct[],
+): boolean {
+  if (avoidedCategories.size === 0 || isCustomProduct(product)) return false;
+  const row = findCatalogRow(catalog, product.id);
+  if (!row) return false;
+  const categories = functionalCategoriesOf(row);
+  for (const c of categories) if (avoidedCategories.has(c)) return true;
+  return false;
+}
+
+function pickForSlot(
+  categories: string[],
+  period: RoutinePeriod,
+  shelfProducts: Product[],
+  recommendedPool: Product[],
+  avoidedCategories: Set<string>,
+  catalog: CatalogProduct[],
+): { product: Product; source: RoutineSource } | null {
+  const eligible = (product: Product) =>
+    categories.includes(product.category) &&
+    isAllowedInPeriod(product, period, catalog) &&
+    !containsAvoidedCategory(product, avoidedCategories, catalog);
+
+  const shelfMatch = shelfProducts.find(eligible);
+  if (shelfMatch) return { product: shelfMatch, source: "shelf" };
+
+  const recommendedMatch = recommendedPool.find(eligible);
+  if (recommendedMatch) return { product: recommendedMatch, source: "recommended" };
+
+  return null;
+}
+
+function buildPeriod(
+  slots: { label: string; categories: string[] }[],
+  period: RoutinePeriod,
+  shelfProducts: Product[],
+  recommendedPool: Product[],
+  avoidedCategories: Set<string>,
+  catalog: CatalogProduct[],
+): RoutineSlot[] {
+  return slots.map(({ label, categories }) => {
+    const picked = pickForSlot(
+      categories,
+      period,
+      shelfProducts,
+      recommendedPool,
+      avoidedCategories,
+      catalog,
+    );
+    return { label, product: picked?.product ?? null, source: picked?.source ?? null };
+  });
+}
+
+/**
+ * Deterministic AM/PM slot filler — no scoring beyond "first eligible match
+ * in list order" (recommendedProducts is expected pre-ordered best-first,
+ * e.g. use-today before optional). Shelf products are always tried before
+ * catalog recommendations for the same slot. A slot with no eligible
+ * product is left empty rather than filled with a mismatch. This is a
+ * simple composer, not a routine engine: no timing/frequency rules, no
+ * ingredient-interaction checks beyond the fixed strong-active set above.
+ */
+export function composeRoutine(
+  catalog: CatalogProduct[],
+  shelfProducts: Product[],
+  recommendedProducts: Product[],
+  recommendation: DailyRecommendation,
+): Routine {
+  const avoidedCategories = labelsToCategories(recommendation.avoidedIngredients);
+
+  const recommendedPool = recommendedProducts
+    .filter((p) => p.status !== "skip-today")
+    .slice()
+    .sort((a, b) => (a.status === "use-today" ? 0 : 1) - (b.status === "use-today" ? 0 : 1));
+
+  return {
+    am: buildPeriod(AM_SLOTS, "am", shelfProducts, recommendedPool, avoidedCategories, catalog),
+    pm: buildPeriod(PM_SLOTS, "pm", shelfProducts, recommendedPool, avoidedCategories, catalog),
+  };
+}

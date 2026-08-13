@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
-import { mockRoutine } from "@/data/mockData";
+import { useAppStore } from "@/lib/appStore";
+import type { RoutineSlot } from "@/lib/routineComposer";
 import { Sun, Moon, Lightbulb } from "lucide-react";
 
 export const Route = createFileRoute("/routine")({
@@ -20,6 +21,13 @@ const week = [
 ];
 
 function Routine() {
+  const { routine, recommendation } = useAppStore();
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <AppShell title="Routine Planner" back="/">
       <MobileHeader title="Routine Planner" back="/" />
@@ -29,7 +37,9 @@ function Routine() {
             <div
               key={d.d}
               className={`flex w-[46px] shrink-0 flex-col items-center rounded-2xl border py-2 text-center lg:w-auto lg:py-3 ${
-                d.active ? "border-[#9d86fc] bg-[#9d86fc] text-white" : "border-hairline bg-white text-ink"
+                d.active
+                  ? "border-[#9d86fc] bg-[#9d86fc] text-white"
+                  : "border-hairline bg-white text-ink"
               }`}
             >
               <span className="text-[10px] font-semibold tracking-wider">{d.d}</span>
@@ -43,21 +53,21 @@ function Routine() {
           style={{ background: "linear-gradient(135deg, #7257E8 0%, #A89AF4 60%, #CDEEFF 100%)" }}
         >
           <div className="absolute -right-6 -top-8 h-32 w-32 rounded-full bg-white/20 blur-2xl" />
-          <p className="text-[11px] font-bold tracking-[0.16em] text-white/90">BARRIER RECOVERY DAY 🌿</p>
-          <h2 className="mt-1 text-[24px] font-bold">{mockRoutine.day}</h2>
-          <p className="mt-1 text-[13px] text-white/90">Focus: Calm, Hydrate, Protect</p>
+          <p className="text-[11px] font-bold tracking-[0.16em] text-white/90">
+            {recommendation.displayName.toUpperCase()}
+          </p>
+          <h2 className="mt-1 text-[24px] font-bold">{today}</h2>
+          <p className="mt-1 text-[13px] text-white/90">{recommendation.explanation}</p>
         </section>
 
         <div className="lg:grid lg:grid-cols-2 lg:gap-6">
-          <RoutineSection title="Morning" Icon={Sun} tint="text-sun" items={mockRoutine.morning} />
-          <RoutineSection title="Evening" Icon={Moon} tint="text-brand" items={mockRoutine.evening} />
+          <RoutineSection title="Morning" Icon={Sun} tint="text-sun" slots={routine.am} />
+          <RoutineSection title="Evening" Icon={Moon} tint="text-brand" slots={routine.pm} />
         </div>
 
         <div className="mt-4 flex items-start gap-3 rounded-2xl bg-sun-light p-4">
           <Lightbulb size={18} className="mt-0.5 shrink-0 text-[#a1770b]" />
-          <p className="text-[13px] text-ink">
-            Avoid strong actives and focus on hydration for a healthier barrier.
-          </p>
+          <p className="text-[13px] text-ink">{recommendation.explanation}</p>
         </div>
 
         <button className="mt-5 w-full rounded-2xl bg-[#9d86fc] py-3.5 text-[14px] font-semibold text-white lg:w-auto lg:px-8">
@@ -72,28 +82,62 @@ function RoutineSection({
   title,
   Icon,
   tint,
-  items,
+  slots,
 }: {
   title: string;
   Icon: React.ComponentType<{ size?: number; className?: string }>;
   tint: string;
-  items: string[];
+  slots: RoutineSlot[];
 }) {
+  const filled = slots.filter(
+    (slot): slot is RoutineSlot & { product: NonNullable<RoutineSlot["product"]> } =>
+      slot.product !== null,
+  );
+
   return (
     <section className="mt-4">
       <div className={`flex items-center gap-1.5 text-[13px] font-semibold ${tint}`}>
         <Icon size={16} /> {title}
       </div>
-      <div className="mt-2 flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
-        {items.map((step, i) => (
-          <div key={i} className="flex w-[80px] shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-hairline bg-white p-2 shadow-soft lg:w-auto lg:p-3">
-            <div className="grid h-14 w-14 place-items-center rounded-xl bg-surface-muted">
-              <svg width="28" height="40" viewBox="0 0 52 72"><rect x="14" y="4" width="24" height="8" rx="2" fill="#ffffff" stroke="#c9d3e0"/><rect x="8" y="14" width="36" height="52" rx="8" fill="#ffffff" stroke="#c9d3e0"/></svg>
+      {filled.length === 0 ? (
+        <p className="mt-2 text-[12.5px] text-ink-muted">No matching products yet.</p>
+      ) : (
+        <div className="mt-2 flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-4 lg:overflow-visible">
+          {filled.map((slot) => (
+            <div
+              key={slot.label}
+              className="flex w-[92px] shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-hairline bg-white p-2 shadow-soft lg:w-auto lg:p-3"
+            >
+              <div className="grid h-14 w-14 place-items-center rounded-xl bg-surface-muted">
+                <svg width="28" height="40" viewBox="0 0 52 72">
+                  <rect x="14" y="4" width="24" height="8" rx="2" fill="#ffffff" stroke="#c9d3e0" />
+                  <rect
+                    x="8"
+                    y="14"
+                    width="36"
+                    height="52"
+                    rx="8"
+                    fill="#ffffff"
+                    stroke="#c9d3e0"
+                  />
+                </svg>
+              </div>
+              <p className="line-clamp-2 text-center text-[11px] font-medium text-ink">
+                {slot.product.name}
+              </p>
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
+                  slot.source === "shelf"
+                    ? "bg-brand/10 text-brand"
+                    : "bg-surface-muted text-ink-muted"
+                }`}
+              >
+                {slot.source === "shelf" ? "On your Shelf" : "Recommended"}
+              </span>
             </div>
-            <p className="text-[11px] font-medium text-ink">{step}</p>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

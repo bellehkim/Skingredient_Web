@@ -15,6 +15,7 @@ import {
 } from "./data/customProducts";
 import { buildProductsFromCatalog } from "./productMatching";
 import { getTodaysRecommendations } from "./productRecommendations";
+import { composeRoutine, type Routine } from "./routineComposer";
 import { getIngredientLibrary, type IngredientLibraryEntry } from "./data/ingredientLibrary";
 import { getProfile, setOnboardingCompleted } from "./data/profile";
 import type {
@@ -42,6 +43,10 @@ interface AppState {
   /** Only products the user has explicitly saved (shelf_items) — never the
    * catalog itself. */
   products: Product[];
+  /** Deterministic AM/PM slot picks — src/lib/routineComposer.ts. Prefers
+   * Shelf products over catalog recommendations, and never invents a
+   * product for an unfillable slot. */
+  routine: Routine;
   /** The curated Ingredient Library — src/routes/ingredients.index.tsx and
    * ingredients.$ingredientId.tsx, and used to link Shelf ingredient chips. */
   ingredientLibrary: IngredientLibraryEntry[];
@@ -187,6 +192,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return [...recommendedProducts.filter((p) => shelfIdSet.has(p.id)), ...customProducts];
   }, [recommendedProducts, shelfProductIds, customProducts]);
 
+  const routine = useMemo(
+    () => composeRoutine(catalog, products, recommendedProducts, recommendation),
+    [catalog, products, recommendedProducts, recommendation],
+  );
+
   const value: AppState = {
     user: mockUser,
     analysis,
@@ -194,6 +204,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     recommendedProducts,
     todaysPicks,
     products,
+    routine,
     ingredientLibrary,
     symptoms,
     scheduleTomorrow,
