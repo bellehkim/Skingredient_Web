@@ -6,6 +6,11 @@ import { MobileHeader } from "@/components/app/MobileHeader";
 import { skinAnalysisService, ANALYSIS_STEPS } from "@/lib/skinAnalysisService";
 import { useAppStore } from "@/lib/appStore";
 import { createAnalysis } from "@/lib/data/analyses";
+import { deriveOverallCondition } from "@/lib/overallCondition";
+import { deriveSkinType } from "@/lib/skinType";
+import { deriveSkinConcerns } from "@/lib/skinConcerns";
+import type { SkinStrategyInput } from "@/lib/skinStrategyService";
+import type { SkinAnalysisResult } from "@/lib/types";
 
 export const Route = createFileRoute("/scan/")({
   head: () => ({ meta: [{ title: "Skin Scan — Skingredient" }] }),
@@ -14,7 +19,7 @@ export const Route = createFileRoute("/scan/")({
 
 function Scan() {
   const navigate = useNavigate();
-  const { setAnalysis } = useAppStore();
+  const { setAnalysis, scheduleTomorrow, products } = useAppStore();
   const [scanning, setScanning] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -80,14 +85,44 @@ function Scan() {
     try {
       const { youcamRaw, ...result } = await skinAnalysisService.analyze(image);
 
+      // "Today's Skin Strategy" — generated exactly once here, right after
+      // the scan and before persistence, using context (schedule, shelf)
+      // that only exists client-side. A failure here must not block saving
+      // the analysis: skinStrategy just stays undefined/null and the
+      // Results/History cards show a non-AI fallback, never auto-retried.
+      let skinStrategy: string | null = null;
+      try {
+        const overallCondition = deriveOverallCondition(result);
+        const skinStrategyInput: SkinStrategyInput = {
+          scores: result,
+          overallCondition: { score: overallCondition.score, label: overallCondition.label },
+          skinType: deriveSkinType(result),
+          concerns: deriveSkinConcerns(result),
+          scheduleTomorrow,
+          shelfCategories: Array.from(new Set(products.map((p) => p.category))),
+        };
+        const strategyRes = await fetch("/api/skin-strategy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(skinStrategyInput),
+        });
+        const strategyBody = await strategyRes.json();
+        if (strategyRes.ok && strategyBody.skinStrategy) {
+          skinStrategy = strategyBody.skinStrategy;
+        }
+      } catch (strategyError) {
+        console.error("Failed to generate skin strategy", strategyError);
+      }
+
       // Persist once, then use the inserted row (generated id, created_at,
       // algorithm_version) as the source of truth rather than the pre-insert
       // in-memory object — see src/lib/data/analyses.ts. Best-effort: a save
       // failure shouldn't break a scan that otherwise succeeded, so fall
       // back to the in-memory result and keep going.
-      let saved = result;
+      const resultWithStrategy: SkinAnalysisResult = { ...result, skinStrategy };
+      let saved = resultWithStrategy;
       try {
-        saved = await createAnalysis(result, youcamRaw);
+        saved = await createAnalysis(resultWithStrategy, youcamRaw);
       } catch (saveError) {
         console.error("Failed to save analysis", saveError);
       }

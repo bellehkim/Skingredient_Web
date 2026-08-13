@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
+import { SkinStrategyCard } from "@/components/app/SkinStrategyCard";
 import { getAnalysisById } from "@/lib/data/analyses";
 import { getMetricStatusText } from "@/lib/metricStatus";
 import { deriveOverallCondition } from "@/lib/overallCondition";
@@ -72,6 +73,8 @@ function HistoryDetail() {
       <MobileHeader title="Past Analysis" back="/insights?tab=history" />
       <PageContainer width="wide">
         <p className="text-[12px] font-medium text-ink-muted">{date}</p>
+
+        <SkinStrategyCard strategy={analysis.skinStrategy} />
 
         <div className="mt-3 grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
           <section

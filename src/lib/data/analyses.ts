@@ -17,6 +17,8 @@ interface SkinAnalysisRow {
   dark_spots: number;
   skin_direction: string | null;
   skin_direction_generated_at: string | null;
+  skin_strategy: string | null;
+  skin_strategy_generated_at: string | null;
   youcam_raw: YouCamTaskResultItem[] | null;
   algorithm_version: string;
   analyzed_at: string;
@@ -34,6 +36,8 @@ function rowToResult(row: SkinAnalysisRow): SkinAnalysisResult {
     ageSpots: row.dark_spots,
     skinDirection: row.skin_direction,
     skinDirectionGeneratedAt: row.skin_direction_generated_at,
+    skinStrategy: row.skin_strategy,
+    skinStrategyGeneratedAt: row.skin_strategy_generated_at,
     analyzedAt: row.analyzed_at,
     id: row.id,
     createdAt: row.created_at,
@@ -67,6 +71,8 @@ export async function createAnalysis(
       dark_spots: result.ageSpots,
       skin_direction: result.skinDirection ?? null,
       skin_direction_generated_at: result.skinDirection ? new Date().toISOString() : null,
+      skin_strategy: result.skinStrategy ?? null,
+      skin_strategy_generated_at: result.skinStrategy ? new Date().toISOString() : null,
       youcam_raw: youcamRaw ?? null,
       algorithm_version: ALGORITHM_VERSION,
       analyzed_at: result.analyzedAt,

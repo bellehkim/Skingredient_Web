@@ -3,6 +3,7 @@ import { Calendar } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
+import { SkinStrategyCard } from "@/components/app/SkinStrategyCard";
 import { useAppStore } from "@/lib/appStore";
 import { getMetricStatusText } from "@/lib/metricStatus";
 import { deriveOverallCondition } from "@/lib/overallCondition";
@@ -32,7 +33,9 @@ function Results() {
         rightSlot={<Calendar size={18} className="text-ink" />}
       />
       <PageContainer width="wide">
-        <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
+        <SkinStrategyCard strategy={analysis.skinStrategy} />
+
+        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
           {/* Overall Condition */}
           <section
             className="relative overflow-hidden rounded-3xl p-5 shadow-soft lg:col-start-1 lg:row-start-1 lg:p-7"

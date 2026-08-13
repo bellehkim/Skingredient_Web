@@ -15,6 +15,13 @@ export interface SkinAnalysisResult {
   skinDirection?: string | null;
   /** When skinDirection was generated (initial generation or a successful retry). */
   skinDirectionGeneratedAt?: string | null;
+  /** AI-generated "Today's Skin Strategy" paragraph (src/lib/skinStrategyService.ts)
+   * — a distinct field from skinDirection: a longer, more contextual strategy
+   * (condition/type/concerns/schedule/shelf-aware) shown on Results/History,
+   * generated exactly once per analysis and never regenerated on read. Missing/null
+   * if generation failed — callers show a non-AI fallback, never retry automatically. */
+  skinStrategy?: string | null;
+  skinStrategyGeneratedAt?: string | null;
 
   // Persistence metadata (src/lib/data/analyses.ts) — present once this
   // analysis has been saved to/read from skin_analyses; absent for
