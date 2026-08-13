@@ -6,8 +6,8 @@ import ahabhaImg from "@/assets/product-ahabha.jpg";
 export const mockUser = {
   name: "Belle",
   streak: 12,
-  skinType: "Oily + Sensitive",
-  skinNote: "T-zone oily, cheeks sensitive",
+  // Hidden for the MVP alongside the Profile page's Skin Goals card (see
+  // SHOW_SKIN_GOALS in src/routes/profile.tsx) — not persisted/editable yet.
   goals: ["Strengthen barrier", "Reduce redness", "Avoid irritation"],
   sensitivities: ["Fragrance", "Essential oils"],
 };

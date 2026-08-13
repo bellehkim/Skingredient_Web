@@ -10,20 +10,49 @@ import {
   Bell,
 } from "lucide-react";
 import { useAppStore } from "@/lib/appStore";
+import { deriveSkinType } from "@/lib/skinType";
 
 const items = [
   { to: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
   { to: "/shelf", label: "My Shelf", icon: Package, match: (p: string) => p.startsWith("/shelf") },
-  { to: "/scan", label: "Scan", icon: ScanFace, match: (p: string) => p.startsWith("/scan") || p === "/results" },
-  { to: "/insights", label: "Insights", icon: ChartNoAxesCombined, match: (p: string) => p.startsWith("/insights") },
-  { to: "/ingredients", label: "Ingredients", icon: FlaskConical, match: (p: string) => p.startsWith("/ingredients") },
-  { to: "/routine", label: "Routine", icon: CalendarHeart, match: (p: string) => p.startsWith("/routine") },
-  { to: "/profile", label: "Profile", icon: UserRound, match: (p: string) => p.startsWith("/profile") },
+  {
+    to: "/scan",
+    label: "Scan",
+    icon: ScanFace,
+    match: (p: string) => p.startsWith("/scan") || p === "/results",
+  },
+  {
+    to: "/insights",
+    label: "Insights",
+    icon: ChartNoAxesCombined,
+    match: (p: string) => p.startsWith("/insights"),
+  },
+  {
+    to: "/ingredients",
+    label: "Ingredients",
+    icon: FlaskConical,
+    match: (p: string) => p.startsWith("/ingredients"),
+  },
+  {
+    to: "/routine",
+    label: "Routine",
+    icon: CalendarHeart,
+    match: (p: string) => p.startsWith("/routine"),
+  },
+  {
+    to: "/profile",
+    label: "Profile",
+    icon: UserRound,
+    match: (p: string) => p.startsWith("/profile"),
+  },
 ] as const;
 
 export function SidebarNavigation() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user } = useAppStore();
+  const { user, analysis } = useAppStore();
+  // Same source of truth as Profile/Results — real analysis (has an id) →
+  // deriveSkinType(), never the old hardcoded onboarding-answer string.
+  const skinType = analysis.id ? deriveSkinType(analysis) : "Not analyzed yet";
 
   return (
     <aside className="hidden w-[232px] shrink-0 flex-col border-r border-hairline bg-white lg:flex">
@@ -75,7 +104,7 @@ export function SidebarNavigation() {
           </span>
           <span className="min-w-0">
             <span className="block truncate text-[13.5px] font-semibold text-ink">{user.name}</span>
-            <span className="block truncate text-[11.5px] text-ink-muted">{user.skinType}</span>
+            <span className="block truncate text-[11.5px] text-ink-muted">{skinType}</span>
           </span>
         </Link>
       </div>

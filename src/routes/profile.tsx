@@ -17,6 +17,13 @@ import {
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { useAppStore } from "@/lib/appStore";
 import { resetDemoUser } from "@/lib/data/demoUser";
+import { deriveSkinType } from "@/lib/skinType";
+
+// Hidden for the MVP — these goals are static/hardcoded, not persisted or
+// user-editable, so showing them alongside real Skin Type data would be
+// misleading. Kept (not deleted) — component code and styling below are
+// untouched — for when goals are backed by real, editable user data.
+const SHOW_SKIN_GOALS = false;
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "Profile — Skingredient" }] }),
@@ -35,7 +42,13 @@ const menu: { icon: typeof User; label: string; to?: string }[] = [
 ];
 
 function Profile() {
-  const { user } = useAppStore();
+  const { user, analysis } = useAppStore();
+  // Real, persisted analyses always have an id (src/lib/types.ts); the
+  // mockAnalysis fallback used before any scan never does — same check
+  // appStore.tsx uses to gate Routine's catalog fallback. Skin Type is
+  // always derived from this, live, via the same deriveSkinType() Results
+  // uses — never a separate onboarding-answer value.
+  const skinType = analysis.id ? deriveSkinType(analysis) : null;
   const [resetting, setResetting] = useState(false);
   // Portaled to document.body below so it floats in the true viewport
   // corner — AppShell's desktop card wrapper is `lg:overflow-hidden`, which
@@ -88,33 +101,41 @@ function Profile() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-bold tracking-[0.14em] text-ink-muted">
-                    SKIN PROFILE
+                    SKIN TYPE
                   </p>
-                  <p className="mt-1 text-[15px] font-semibold text-ink">{user.skinType}</p>
-                  <p className="text-[13px] text-ink-muted">{user.skinNote}</p>
+                  <p className="mt-1 text-[15px] font-semibold text-ink">
+                    {skinType ?? "Not analyzed yet"}
+                  </p>
+                  <p className="text-[13px] text-ink-muted">
+                    {skinType
+                      ? "Based on your latest skin analysis"
+                      : "Complete a skin scan to determine your skin type."}
+                  </p>
                 </div>
                 <Link
-                  to="/onboarding"
+                  to="/scan/check-in"
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-brand-light px-3 py-1.5 text-[12px] font-semibold text-brand"
                 >
-                  <RefreshCw size={12} /> Retake
+                  <RefreshCw size={12} /> Retake scan
                 </Link>
               </div>
             </section>
 
-            <section className="mt-3 rounded-3xl border border-hairline bg-white p-4 shadow-soft">
-              <p className="text-[11px] font-bold tracking-[0.14em] text-ink-muted">SKIN GOALS</p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {user.goals.map((g) => (
-                  <span
-                    key={g}
-                    className="rounded-full bg-brand-light px-3 py-1 text-[12px] font-medium text-brand"
-                  >
-                    {g}
-                  </span>
-                ))}
-              </div>
-            </section>
+            {SHOW_SKIN_GOALS && (
+              <section className="mt-3 rounded-3xl border border-hairline bg-white p-4 shadow-soft">
+                <p className="text-[11px] font-bold tracking-[0.14em] text-ink-muted">SKIN GOALS</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {user.goals.map((g) => (
+                    <span
+                      key={g}
+                      className="rounded-full bg-brand-light px-3 py-1 text-[12px] font-medium text-brand"
+                    >
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
 
           <ul className="mt-4 divide-y divide-hairline overflow-hidden rounded-3xl border border-hairline bg-white shadow-soft lg:mt-0">
