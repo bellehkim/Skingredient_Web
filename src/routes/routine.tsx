@@ -29,8 +29,8 @@ function Routine() {
   });
 
   return (
-    <AppShell title="Routine Planner" back="/">
-      <MobileHeader title="Routine Planner" back="/" />
+    <AppShell title="Routine Planner">
+      <MobileHeader title="Routine Planner" />
       <PageContainer width="wide">
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-7 lg:gap-3 lg:overflow-visible">
           {week.map((d) => (

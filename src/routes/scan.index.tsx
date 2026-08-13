@@ -188,10 +188,9 @@ function Scan() {
   };
 
   return (
-    <AppShell title="Skin Scan" back="/">
+    <AppShell title="Skin Scan">
       <MobileHeader
         title="Skin Scan"
-        back="/"
         rightSlot={
           <Link
             to="/"

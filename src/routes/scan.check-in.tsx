@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
@@ -33,6 +33,12 @@ export const Route = createFileRoute("/scan/check-in")({
 
 function CheckIn() {
   const navigate = useNavigate();
+  const router = useRouter();
+  // Reachable from Home's "Today's skin check" banner, Home's "Scan skin"
+  // quick action, and /scan's "Daily check-in" link — no single hardcoded
+  // back destination is correct for all three, so back retraces actual
+  // navigation history instead (see MobileHeader/DesktopTopBar's onBack).
+  const goBack = () => router.history.back();
   const { setSymptoms, setScheduleTomorrow, markScanCompleted } = useAppStore();
   const [selFeel, setSelFeel] = useState<string[]>([]);
   const [selTried, setSelTried] = useState<string[]>([]);
@@ -47,8 +53,8 @@ function CheckIn() {
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   return (
-    <AppShell hideNav title="Daily check-in" back="/scan">
-      <MobileHeader title="Daily check-in" back="/scan" />
+    <AppShell hideNav title="Daily check-in" onBack={goBack}>
+      <MobileHeader title="Daily check-in" onBack={goBack} />
       <PageContainer width="narrow" className="pb-32">
         <h2 className="text-[22px] font-bold text-ink lg:text-[26px]">
           How does your skin feel today?

@@ -11,11 +11,15 @@ export function DesktopTopBar({
   title,
   breadcrumb,
   back,
+  onBack,
   actions,
 }: {
   title?: string;
   breadcrumb?: Crumb[];
   back?: string;
+  /** See MobileHeader's onBack — same escape hatch for pages with more than
+   * one entry point, where no single hardcoded `back` destination is correct. */
+  onBack?: () => void;
   actions?: ReactNode;
 }) {
   if (!title && !breadcrumb && !actions) return null;
@@ -41,14 +45,25 @@ export function DesktopTopBar({
         )}
         {title && (
           <div className="flex items-center gap-2.5">
-            {back && (
-              <Link
-                to={back}
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
                 aria-label="Back"
                 className="grid h-8 w-8 place-items-center rounded-full text-ink hover:bg-surface-muted"
               >
                 <ChevronLeft size={18} />
-              </Link>
+              </button>
+            ) : (
+              back && (
+                <Link
+                  to={back}
+                  aria-label="Back"
+                  className="grid h-8 w-8 place-items-center rounded-full text-ink hover:bg-surface-muted"
+                >
+                  <ChevronLeft size={18} />
+                </Link>
+              )
             )}
             <h1 className="truncate text-[20px] font-bold text-ink">{title}</h1>
           </div>

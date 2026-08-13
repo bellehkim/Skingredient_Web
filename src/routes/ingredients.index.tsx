@@ -35,8 +35,8 @@ function Explorer() {
   const more = filtered;
 
   return (
-    <AppShell title="Ingredient Explorer" back="/">
-      <MobileHeader title="Ingredient Explorer" back="/" />
+    <AppShell title="Ingredient Explorer">
+      <MobileHeader title="Ingredient Explorer" />
       <PageContainer width="wide">
         <div className="flex items-center gap-2 rounded-2xl bg-surface-muted px-4 py-3">
           <Search size={16} className="text-ink-muted" />

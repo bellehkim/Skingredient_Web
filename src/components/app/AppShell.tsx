@@ -9,6 +9,7 @@ export function AppShell({
   title,
   breadcrumb,
   back,
+  onBack,
   actions,
 }: {
   children: ReactNode;
@@ -17,6 +18,9 @@ export function AppShell({
   title?: string;
   breadcrumb?: Crumb[];
   back?: string;
+  /** See MobileHeader's onBack — same escape hatch for pages with more than
+   * one entry point, where no single hardcoded `back` destination is correct. */
+  onBack?: () => void;
   actions?: ReactNode;
 }) {
   return (
@@ -30,7 +34,13 @@ export function AppShell({
               full-bleed flow with a fixed-bottom CTA) can still opt into a desktop
               back button by passing `back`/`title` — DesktopTopBar itself renders
               nothing when none of title/breadcrumb/actions are given. */}
-          <DesktopTopBar title={title} breadcrumb={breadcrumb} back={back} actions={actions} />
+          <DesktopTopBar
+            title={title}
+            breadcrumb={breadcrumb}
+            back={back}
+            onBack={onBack}
+            actions={actions}
+          />
           <main className={`flex-1 ${hideNav ? "" : "pb-24 lg:pb-12"}`}>{children}</main>
           {!hideNav && (
             <div className="lg:hidden">
