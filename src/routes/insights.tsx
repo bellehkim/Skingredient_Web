@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { z } from "zod";
 import {
   AreaChart,
   Area,
@@ -40,13 +41,25 @@ const TREND_METRICS: Record<
   ageSpots: { label: "Dark Spots", color: METRIC_COLORS.ageSpots, accessor: (a) => a.ageSpots },
 };
 
+const insightsSearchSchema = z.object({
+  // Which tab was active — kept in the URL (not just component state) so the
+  // back link from /history/$analysisId can return to the History tab
+  // specifically, rather than always landing back on the Trend tab default.
+  // Optional (rather than defaulted via .catch()) so existing plain
+  // <Link to="/insights"> call sites don't need to start passing search.
+  tab: z.enum(["trend", "history"]).optional(),
+});
+
 export const Route = createFileRoute("/insights")({
   head: () => ({ meta: [{ title: "Insights — Skingredient" }] }),
+  validateSearch: insightsSearchSchema,
   component: Insights,
 });
 
 function Insights() {
-  const [tab, setTab] = useState<"trend" | "history">("trend");
+  const { tab = "trend" } = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const setTab = (t: "trend" | "history") => navigate({ search: { tab: t } });
   const [history, setHistory] = useState<SkinAnalysisResult[] | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<TrendMetricKey>("redness");
 

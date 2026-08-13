@@ -38,8 +38,8 @@ function HistoryDetail() {
 
   if (analysis === undefined) {
     return (
-      <AppShell title="Past Analysis" back="/insights">
-        <MobileHeader title="Past Analysis" back="/insights" />
+      <AppShell title="Past Analysis" back="/insights?tab=history">
+        <MobileHeader title="Past Analysis" back="/insights?tab=history" />
         <PageContainer width="wide">
           <p className="mt-6 text-center text-[13px] text-ink-muted">Loading…</p>
         </PageContainer>
@@ -49,8 +49,8 @@ function HistoryDetail() {
 
   if (analysis === null) {
     return (
-      <AppShell title="Past Analysis" back="/insights">
-        <MobileHeader title="Past Analysis" back="/insights" />
+      <AppShell title="Past Analysis" back="/insights?tab=history">
+        <MobileHeader title="Past Analysis" back="/insights?tab=history" />
         <PageContainer width="wide">
           <p className="mt-6 text-center text-[13px] text-ink-muted">
             This analysis couldn't be found.
@@ -68,8 +68,8 @@ function HistoryDetail() {
   });
 
   return (
-    <AppShell title="Past Analysis" back="/insights">
-      <MobileHeader title="Past Analysis" back="/insights" />
+    <AppShell title="Past Analysis" back="/insights?tab=history">
+      <MobileHeader title="Past Analysis" back="/insights?tab=history" />
       <PageContainer width="wide">
         <p className="text-[12px] font-medium text-ink-muted">{date}</p>
 
