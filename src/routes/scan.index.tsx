@@ -19,7 +19,7 @@ export const Route = createFileRoute("/scan/")({
 
 function Scan() {
   const navigate = useNavigate();
-  const { setAnalysis, scheduleTomorrow, products } = useAppStore();
+  const { setAnalysis, scheduleTomorrow, eventTiming, products } = useAppStore();
   const [scanning, setScanning] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +99,7 @@ function Scan() {
           skinType: deriveSkinType(result),
           concerns: deriveSkinConcerns(result),
           scheduleTomorrow,
+          eventTiming,
           shelfCategories: Array.from(new Set(products.map((p) => p.category))),
         };
         const strategyRes = await fetch("/api/skin-strategy", {

@@ -13,7 +13,8 @@ const DISPLAY: Record<SkinDirection, string> = {
 const SEVERE_SYMPTOMS = ["burning", "swelling", "severe-itching", "rash"];
 
 export function generateRecommendation(input: RecommendationInput): DailyRecommendation {
-  const { analysis, symptoms, sensitivities, scheduleTomorrow, ingredientHistory } = input;
+  const { analysis, symptoms, sensitivities, scheduleTomorrow, eventTiming, ingredientHistory } =
+    input;
   const severe = symptoms.some((s) => SEVERE_SYMPTOMS.includes(s));
 
   let direction: SkinDirection = "hydration-support";
@@ -80,6 +81,7 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
     const adjusted = applyScheduleAdjustment(
       { prioritizedIngredients: prioritized, avoidedIngredients: avoided, explanation },
       scheduleTomorrow,
+      eventTiming ?? "none",
     );
     prioritized = adjusted.prioritizedIngredients;
     avoided = adjusted.avoidedIngredients;

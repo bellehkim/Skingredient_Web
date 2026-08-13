@@ -18,6 +18,25 @@ import {
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { useAppStore } from "@/lib/appStore";
 import { updateSkinDirection } from "@/lib/data/analyses";
+import type { EventTiming, ScheduleOption } from "@/lib/types";
+
+// Upcoming-plan card labels — sourced entirely from the live scheduleTomorrow
+// (type) + eventTiming (timing) state, never a hardcoded date/time. No exact
+// clock time is ever shown because the user never enters one.
+const EVENT_TYPE_LABEL: Record<ScheduleOption, string> = {
+  "important-event": "Important event",
+  "outdoor-day": "Outdoor activity",
+  travel: "Travel",
+  "cosmetic-treatment": "Cosmetic treatment",
+  none: "Nothing special scheduled",
+};
+
+const EVENT_TIMING_LABEL: Record<EventTiming, string> = {
+  tomorrow: "TOMORROW",
+  "three-days": "WITHIN 3 DAYS",
+  week: "WITHIN A WEEK",
+  none: "NO UPCOMING PLANS",
+};
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -34,8 +53,23 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { user, analysis, recommendation, event, scanCompletedToday, setAnalysis } = useAppStore();
+  const {
+    user,
+    analysis,
+    recommendation,
+    scheduleTomorrow,
+    eventTiming,
+    scanCompletedToday,
+    setAnalysis,
+  } = useAppStore();
   const [retryingDirection, setRetryingDirection] = useState(false);
+  const hasUpcomingPlan = scheduleTomorrow !== "none" && eventTiming !== "none";
+  const eventWhenLabel = hasUpcomingPlan
+    ? EVENT_TIMING_LABEL[eventTiming]
+    : EVENT_TIMING_LABEL.none;
+  const eventTypeLabel = hasUpcomingPlan
+    ? EVENT_TYPE_LABEL[scheduleTomorrow]
+    : EVENT_TYPE_LABEL.none;
 
   // Manual retry only — never runs on mount/refresh/navigation/re-render, only
   // on click. Doesn't touch YouCam or re-run the scan; just re-asks for a
@@ -201,9 +235,9 @@ function Home() {
               </div>
               <div className="flex-1">
                 <p className="text-[9.5px] font-bold tracking-[0.14em] text-ink-muted">
-                  {event.whenLabel}
+                  {eventWhenLabel}
                 </p>
-                <p className="text-[14px] font-semibold text-ink">{event.label}</p>
+                <p className="text-[14px] font-semibold text-ink">{eventTypeLabel}</p>
               </div>
               <Calendar size={16} className="text-ink-muted" />
             </div>

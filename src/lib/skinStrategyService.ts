@@ -1,16 +1,27 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { ScheduleOption, SkinAnalysisResult } from "./types";
+import { EVENT_TIMING_PHRASE } from "./scheduleAdjustments";
+import type { EventTiming, ScheduleOption, SkinAnalysisResult } from "./types";
 
 const MODEL = "claude-haiku-4-5";
 const MAX_TOKENS = 300;
 
-const SCHEDULE_LABELS: Record<ScheduleOption, string> = {
-  "important-event": "an important event tomorrow",
-  "outdoor-day": "an outdoor day tomorrow",
-  travel: "travel tomorrow",
-  "cosmetic-treatment": "a cosmetic treatment tomorrow",
-  none: "nothing special planned tomorrow",
+const EVENT_TYPE_PHRASE: Record<Exclude<ScheduleOption, "none">, string> = {
+  "important-event": "an important event",
+  "outdoor-day": "an outdoor day",
+  travel: "travel",
+  "cosmetic-treatment": "a cosmetic treatment",
 };
+
+/** Composes the type + timing into one line for the prompt — reuses the
+ * exact same phrase vocabulary as scheduleAdjustments.ts (the deterministic
+ * engine) so the AI's wording never contradicts what actually happened to
+ * the ingredient lists. "none" for either field means no upcoming plan. */
+function upcomingPlanLine(type: ScheduleOption, timing: EventTiming): string {
+  if (type === "none" || timing === "none") {
+    return "Upcoming plans: nothing special planned.";
+  }
+  return `Upcoming plans: ${EVENT_TYPE_PHRASE[type]} ${EVENT_TIMING_PHRASE[timing]}.`;
+}
 
 const SYSTEM_PROMPT = `You are a skincare strategy assistant for the Skingredient app.
 You write "Today's Skin Strategy" — a short paragraph explaining today's overall
@@ -31,12 +42,15 @@ You must NOT:
 
 Instead, speak at the strategy level only, e.g.: focus on hydration, strengthen your
 skin barrier, keep your routine gentle, avoid introducing strong new actives,
-prioritize UV protection tomorrow, maintain consistency.
+prioritize UV protection, maintain consistency.
 
-If tomorrow's schedule is meaningful (an event, travel, an outdoor day, a cosmetic
-treatment), open by acknowledging it before describing today's focus. If Shelf
-context is provided, you may note that the user already owns relevant product
-categories, but never recommend a specific one.`;
+If the user has a meaningful upcoming plan (an event, travel, an outdoor day, a
+cosmetic treatment), open by naturally acknowledging both WHAT it is and roughly
+WHEN it is (e.g. "You have an important event tomorrow..." or "With travel coming
+up within the next few days...") before describing today's focus — something
+tomorrow deserves a stronger tone than something a week out. If Shelf context is
+provided, you may note that the user already owns relevant product categories,
+but never recommend a specific one.`;
 
 export interface SkinStrategyInput {
   scores: Pick<
@@ -47,6 +61,7 @@ export interface SkinStrategyInput {
   skinType: string;
   concerns: string[];
   scheduleTomorrow: ScheduleOption;
+  eventTiming: EventTiming;
   /** Category-level only (e.g. "Cleanser", "Moisturizer") — never product
    * names/brands. Omit or pass an empty array to leave Shelf context out of
    * the prompt entirely when it wouldn't materially help. */
@@ -56,7 +71,15 @@ export interface SkinStrategyInput {
 /** Exported for testing — the prompt-building step is pure and deterministic;
  * the network call around it is not worth mocking for unit tests. */
 export function buildPrompt(input: SkinStrategyInput): string {
-  const { scores, overallCondition, skinType, concerns, scheduleTomorrow, shelfCategories } = input;
+  const {
+    scores,
+    overallCondition,
+    skinType,
+    concerns,
+    scheduleTomorrow,
+    eventTiming,
+    shelfCategories,
+  } = input;
 
   const lines = [
     `Overall Condition: ${overallCondition.label} (score ${overallCondition.score}/100)`,
@@ -65,7 +88,7 @@ export function buildPrompt(input: SkinStrategyInput): string {
     concerns.length > 0
       ? `Detected concerns today: ${concerns.join(", ")}`
       : "Detected concerns today: none — skin is broadly balanced.",
-    `Tomorrow: ${SCHEDULE_LABELS[scheduleTomorrow]}.`,
+    upcomingPlanLine(scheduleTomorrow, eventTiming),
   ];
 
   if (shelfCategories.length > 0) {
@@ -87,7 +110,7 @@ function getClient(): Anthropic {
 }
 
 /**
- * Calls Claude once to turn today's condition/type/concerns/schedule/shelf
+ * Calls Claude once to turn today's condition/type/concerns/upcoming-plan/shelf
  * context into a short "Today's Skin Strategy" paragraph. Returns null on
  * any failure (refusal, API error, empty response) rather than throwing —
  * callers persist the analysis regardless and leave skin_strategy null; this

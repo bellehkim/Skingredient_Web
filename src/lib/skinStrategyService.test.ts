@@ -16,15 +16,28 @@ function input(overrides: Partial<SkinStrategyInput> = {}): SkinStrategyInput {
     skinType: "Balanced",
     concerns: [],
     scheduleTomorrow: "none",
+    eventTiming: "none",
     shelfCategories: [],
     ...overrides,
   };
 }
 
 describe("buildPrompt", () => {
-  it("reflects tomorrow's schedule selection", () => {
-    const prompt = buildPrompt(input({ scheduleTomorrow: "important-event" }));
+  it("reflects both event type and timing", () => {
+    const prompt = buildPrompt(
+      input({ scheduleTomorrow: "important-event", eventTiming: "tomorrow" }),
+    );
     expect(prompt).toContain("an important event tomorrow");
+  });
+
+  it("reflects a non-tomorrow timing", () => {
+    const prompt = buildPrompt(input({ scheduleTomorrow: "travel", eventTiming: "three-days" }));
+    expect(prompt).toContain("travel within the next few days");
+  });
+
+  it("treats type 'none' as no upcoming plan even if timing were set", () => {
+    const prompt = buildPrompt(input({ scheduleTomorrow: "none", eventTiming: "none" }));
+    expect(prompt).toContain("nothing special planned");
   });
 
   it("omits Shelf context when empty", () => {

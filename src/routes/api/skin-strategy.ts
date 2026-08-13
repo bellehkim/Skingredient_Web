@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { generateSkinStrategy, type SkinStrategyInput } from "@/lib/skinStrategyService";
-import type { ScheduleOption } from "@/lib/types";
+import type { EventTiming, ScheduleOption } from "@/lib/types";
 
 const SCHEDULE_OPTIONS: ScheduleOption[] = [
   "important-event",
@@ -9,6 +9,8 @@ const SCHEDULE_OPTIONS: ScheduleOption[] = [
   "cosmetic-treatment",
   "none",
 ];
+
+const EVENT_TIMINGS: EventTiming[] = ["tomorrow", "three-days", "week", "none"];
 
 function isValidBody(body: unknown): body is SkinStrategyInput {
   if (!body || typeof body !== "object") return false;
@@ -35,6 +37,8 @@ function isValidBody(body: unknown): body is SkinStrategyInput {
     b.concerns.every((c) => typeof c === "string") &&
     typeof b.scheduleTomorrow === "string" &&
     SCHEDULE_OPTIONS.includes(b.scheduleTomorrow as ScheduleOption) &&
+    typeof b.eventTiming === "string" &&
+    EVENT_TIMINGS.includes(b.eventTiming as EventTiming) &&
     Array.isArray(b.shelfCategories) &&
     b.shelfCategories.every((c) => typeof c === "string")
   );

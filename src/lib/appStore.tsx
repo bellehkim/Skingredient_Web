@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { mockAnalysis, mockEvent, mockUser } from "@/data/mockData";
+import { mockAnalysis, mockUser } from "@/data/mockData";
 import { generateRecommendation } from "./recommendationEngine";
 import { getLatestAnalysis } from "./data/analyses";
 import { getCatalogProducts, type CatalogProduct } from "./data/catalog";
@@ -20,11 +20,11 @@ import { getIngredientLibrary, type IngredientLibraryEntry } from "./data/ingred
 import { getProfile, setOnboardingCompleted } from "./data/profile";
 import type {
   DailyRecommendation,
+  EventTiming,
   Product,
   ProductStatus,
   ScheduleOption,
   SkinAnalysisResult,
-  UpcomingEvent,
 } from "./types";
 
 type Reaction = "helpful" | "neutral" | "irritating" | "unknown";
@@ -32,7 +32,6 @@ type Reaction = "helpful" | "neutral" | "irritating" | "unknown";
 interface AppState {
   user: typeof mockUser;
   analysis: SkinAnalysisResult;
-  event: UpcomingEvent;
   /** Full catalog, annotated with today's status — for display only. Saving
    * is what puts a product on the shelf; this list on its own never does. */
   recommendedProducts: Product[];
@@ -51,18 +50,23 @@ interface AppState {
    * ingredients.$ingredientId.tsx, and used to link Shelf ingredient chips. */
   ingredientLibrary: IngredientLibraryEntry[];
   symptoms: string[];
-  /** "What's happening tomorrow?" from the daily check-in — modifies today's
-   * recommendation (src/lib/scheduleAdjustments.ts), never overrides the
-   * skin-analysis baseline. */
+  /** "What's happening?" (event TYPE) from the daily check-in — modifies
+   * today's recommendation (src/lib/scheduleAdjustments.ts), never overrides
+   * the skin-analysis baseline. Always paired with eventTiming below —
+   * sibling fields, not nested, but together the one source of truth for
+   * the user's upcoming plan (also drives the Home card). */
   scheduleTomorrow: ScheduleOption;
+  /** "When is it?" (event TIMING) — "none" whenever scheduleTomorrow is
+   * "none". Determines how strongly the schedule adjustment applies. */
+  eventTiming: EventTiming;
   recommendation: DailyRecommendation;
   ingredientHistory: Record<string, Reaction>;
   scanCompletedToday: boolean;
   hasCompletedOnboarding: boolean;
   setSymptoms: (s: string[]) => void;
   setScheduleTomorrow: (s: ScheduleOption) => void;
+  setEventTiming: (t: EventTiming) => void;
   setAnalysis: (a: SkinAnalysisResult) => void;
-  setEvent: (e: UpcomingEvent) => void;
   updateProductStatus: (id: string, status: ProductStatus) => void;
   addToShelf: (productId: string) => void;
   /** Removes either a catalog product (shelf_items) or a manually-added one
@@ -86,7 +90,6 @@ function todayKey() {
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [analysis, setAnalysis] = useState<SkinAnalysisResult>(mockAnalysis);
-  const [event, setEvent] = useState<UpcomingEvent>(mockEvent);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [shelfProductIds, setShelfProductIds] = useState<string[]>([]);
   const [customProducts, setCustomProducts] = useState<Product[]>([]);
@@ -94,6 +97,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [statusOverrides, setStatusOverrides] = useState<Record<string, ProductStatus>>({});
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [scheduleTomorrow, setScheduleTomorrow] = useState<ScheduleOption>("none");
+  const [eventTiming, setEventTiming] = useState<EventTiming>("none");
   const [ingredientHistory, setIngredientHistory] = useState<Record<string, Reaction>>({});
   const [lastScanDay, setLastScanDay] = useState<string | null>(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
@@ -105,6 +109,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         const s = JSON.parse(raw);
         if (s.symptoms) setSymptoms(s.symptoms);
         if (s.scheduleTomorrow) setScheduleTomorrow(s.scheduleTomorrow);
+        if (s.eventTiming) setEventTiming(s.eventTiming);
         if (s.ingredientHistory) setIngredientHistory(s.ingredientHistory);
         if (s.lastScanDay) setLastScanDay(s.lastScanDay);
       }
@@ -117,12 +122,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(
         "skingredient",
-        JSON.stringify({ symptoms, scheduleTomorrow, ingredientHistory, lastScanDay }),
+        JSON.stringify({ symptoms, scheduleTomorrow, eventTiming, ingredientHistory, lastScanDay }),
       );
     } catch {
       // localStorage unavailable/corrupt — ignore, keep defaults.
     }
-  }, [symptoms, scheduleTomorrow, ingredientHistory, lastScanDay]);
+  }, [symptoms, scheduleTomorrow, eventTiming, ingredientHistory, lastScanDay]);
 
   // Hydrate from Supabase on mount — pure reads, never call YouCam/Claude.
   // If the user has a real saved analysis, prefer it over mockAnalysis so a
@@ -162,9 +167,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         sensitivities: mockUser.sensitivities,
         recentActives: [],
         scheduleTomorrow,
+        eventTiming,
         ingredientHistory,
       }),
-    [analysis, symptoms, scheduleTomorrow, ingredientHistory],
+    [analysis, symptoms, scheduleTomorrow, eventTiming, ingredientHistory],
   );
 
   // Skin concern → ingredient category → matching products, per
@@ -209,7 +215,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     user: mockUser,
     analysis,
-    event,
     recommendedProducts,
     todaysPicks,
     products,
@@ -217,14 +222,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ingredientLibrary,
     symptoms,
     scheduleTomorrow,
+    eventTiming,
     recommendation,
     ingredientHistory,
     scanCompletedToday: lastScanDay === todayKey(),
     hasCompletedOnboarding,
     setSymptoms,
     setScheduleTomorrow,
+    setEventTiming,
     setAnalysis,
-    setEvent,
     updateProductStatus: (id, status) => setStatusOverrides((prev) => ({ ...prev, [id]: status })),
     addToShelf: (productId) => {
       setShelfProductIds((prev) => (prev.includes(productId) ? prev : [...prev, productId]));

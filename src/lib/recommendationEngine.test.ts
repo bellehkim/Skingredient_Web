@@ -19,6 +19,7 @@ function analysis(overrides: Partial<SkinAnalysisResult>): SkinAnalysisResult {
 function recommend(
   a: SkinAnalysisResult,
   scheduleTomorrow?: RecommendationInput["scheduleTomorrow"],
+  eventTiming?: RecommendationInput["eventTiming"],
 ) {
   return generateRecommendation({
     analysis: a,
@@ -26,6 +27,7 @@ function recommend(
     sensitivities: [],
     recentActives: [],
     scheduleTomorrow,
+    eventTiming,
   });
 }
 
@@ -58,14 +60,42 @@ describe("generateRecommendation — acne + reduced hydration", () => {
   });
 });
 
-describe("generateRecommendation — tomorrow's schedule context", () => {
-  it("modifies (not replaces) the skin-analysis baseline for an important event", () => {
+describe("generateRecommendation — upcoming plan (type + timing)", () => {
+  it("modifies (not replaces) the skin-analysis baseline for an important event tomorrow", () => {
     const { prioritizedIngredients, avoidedIngredients } = recommend(
       analysis({ acne: 32, hydration: 80 }),
       "important-event",
+      "tomorrow",
     );
     expect(prioritizedIngredients).toEqual(["Niacinamide", "Ceramides", "Panthenol"]);
     expect(avoidedIngredients).toEqual(expect.arrayContaining(["Salicylic Acid", "Azelaic Acid"]));
+  });
+
+  it("applies a lighter, moderate adjustment for an important event within 3 days", () => {
+    const { prioritizedIngredients } = recommend(
+      analysis({ acne: 32, hydration: 80 }),
+      "important-event",
+      "three-days",
+    );
+    expect(prioritizedIngredients).toEqual(["Niacinamide"]);
+    expect(prioritizedIngredients).not.toContain("Ceramides");
+  });
+
+  it("leaves ingredients untouched (informational only) for an important event within a week", () => {
+    const baseline = recommend(analysis({ acne: 32, hydration: 80 }));
+    const { prioritizedIngredients, avoidedIngredients } = recommend(
+      analysis({ acne: 32, hydration: 80 }),
+      "important-event",
+      "week",
+    );
+    expect(prioritizedIngredients).toEqual(baseline.prioritizedIngredients);
+    expect(avoidedIngredients).toEqual(baseline.avoidedIngredients);
+  });
+
+  it("an event type without a timing ('none') leaves the baseline unchanged", () => {
+    const baseline = recommend(analysis({ acne: 32, hydration: 80 }));
+    const withEvent = recommend(analysis({ acne: 32, hydration: 80 }), "important-event", "none");
+    expect(withEvent).toEqual(baseline);
   });
 
   it("is skipped entirely on a high-risk (pause-actives) day — already maximally gentle", () => {
@@ -75,6 +105,7 @@ describe("generateRecommendation — tomorrow's schedule context", () => {
       sensitivities: [],
       recentActives: [],
       scheduleTomorrow: "important-event",
+      eventTiming: "tomorrow",
     });
     expect(withEvent.riskLevel).toBe("high");
     expect(withEvent.explanation).not.toContain("important event");
@@ -82,7 +113,7 @@ describe("generateRecommendation — tomorrow's schedule context", () => {
 
   it("'none' schedule context leaves the baseline completely unchanged", () => {
     const baseline = recommend(analysis({ acne: 32, hydration: 80 }));
-    const withNone = recommend(analysis({ acne: 32, hydration: 80 }), "none");
+    const withNone = recommend(analysis({ acne: 32, hydration: 80 }), "none", "tomorrow");
     expect(withNone).toEqual(baseline);
   });
 });

@@ -1,4 +1,4 @@
-import type { Product, SkinAnalysisResult, UpcomingEvent } from "@/lib/types";
+import type { Product, SkinAnalysisResult } from "@/lib/types";
 import ceraveImg from "@/assets/product-cerave.jpg";
 import centellaImg from "@/assets/product-centella.jpg";
 import ahabhaImg from "@/assets/product-ahabha.jpg";
@@ -10,13 +10,6 @@ export const mockUser = {
   skinNote: "T-zone oily, cheeks sensitive",
   goals: ["Strengthen barrier", "Reduce redness", "Avoid irritation"],
   sensitivities: ["Fragrance", "Essential oils"],
-};
-
-export const mockEvent: UpcomingEvent = {
-  type: "Date",
-  label: "Date night",
-  timing: "tomorrow",
-  whenLabel: "TOMORROW · 7:00 PM",
 };
 
 // All fields use "higher = healthier", matching YouCam's ui_score convention

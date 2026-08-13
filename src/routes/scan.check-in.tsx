@@ -4,7 +4,7 @@ import { MobileHeader } from "@/components/app/MobileHeader";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { SafetyNotice } from "@/components/app/SafetyNotice";
 import { useAppStore } from "@/lib/appStore";
-import { resolveScheduleOption } from "@/lib/scheduleAdjustments";
+import { resolveEventTiming, resolveScheduleOption } from "@/lib/scheduleAdjustments";
 
 const feelings = [
   "Dry",
@@ -18,13 +18,14 @@ const feelings = [
   "Feels normal",
 ];
 const tried = ["New product", "New active ingredient", "Cosmetic treatment", "Nothing new"];
-const tomorrow = [
-  "Date or special event",
+const whatsHappening = [
+  "Nothing special",
+  "Important event",
   "Outdoor activity",
   "Travel",
   "Cosmetic treatment",
-  "Nothing special",
 ];
+const timingOptions = ["Tomorrow", "Within 3 days", "Within a week"];
 
 export const Route = createFileRoute("/scan/check-in")({
   head: () => ({ meta: [{ title: "Daily check-in — Skingredient" }] }),
@@ -39,10 +40,15 @@ function CheckIn() {
   // back destination is correct for all three, so back retraces actual
   // navigation history instead (see MobileHeader/DesktopTopBar's onBack).
   const goBack = () => router.history.back();
-  const { setSymptoms, setScheduleTomorrow, markScanCompleted } = useAppStore();
+  const { setSymptoms, setScheduleTomorrow, setEventTiming, markScanCompleted } = useAppStore();
   const [selFeel, setSelFeel] = useState<string[]>([]);
   const [selTried, setSelTried] = useState<string[]>([]);
-  const [selTom, setSelTom] = useState<string[]>([]);
+  // Single-select — one event type/timing, not several combined — unlike the
+  // multi-select feelings/tried chips above.
+  const [selWhat, setSelWhat] = useState<string | null>(null);
+  const [selTiming, setSelTiming] = useState<string | null>(null);
+  const needsTiming = selWhat !== null && selWhat !== "Nothing special";
+  const canContinue = !needsTiming || selTiming !== null;
 
   const warn = useMemo(
     () => selFeel.some((s) => ["Burning", "Stinging"].includes(s)) || selFeel.includes("Swelling"),
@@ -82,24 +88,40 @@ function CheckIn() {
           onToggle={(v) => toggle(selTried, setSelTried, v)}
         />
 
-        <h3 className="mt-8 text-[17px] font-semibold text-ink">What's happening tomorrow?</h3>
+        <h3 className="mt-8 text-[17px] font-semibold text-ink">What's happening?</h3>
         <ChipGrid
-          options={tomorrow}
-          selected={selTom}
-          onToggle={(v) => toggle(selTom, setSelTom, v)}
+          options={whatsHappening}
+          selected={selWhat ? [selWhat] : []}
+          onToggle={(v) => {
+            setSelWhat(v);
+            if (v === "Nothing special") setSelTiming(null);
+          }}
         />
+
+        {needsTiming && (
+          <>
+            <h3 className="mt-8 text-[17px] font-semibold text-ink">When is it?</h3>
+            <ChipGrid
+              options={timingOptions}
+              selected={selTiming ? [selTiming] : []}
+              onToggle={(v) => setSelTiming(v)}
+            />
+          </>
+        )}
       </PageContainer>
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-hairline bg-white px-5 py-4">
         <button
+          disabled={!canContinue}
           onClick={() => {
             const mapped = selFeel.map((s) => s.toLowerCase().replace(/\s+/g, "-"));
             setSymptoms(mapped);
-            setScheduleTomorrow(resolveScheduleOption(selTom));
+            setScheduleTomorrow(resolveScheduleOption(selWhat));
+            setEventTiming(needsTiming ? resolveEventTiming(selTiming) : "none");
             markScanCompleted();
             navigate({ to: "/scan" });
           }}
-          className="mx-auto block w-full max-w-[400px] rounded-2xl bg-[#9d86fc] py-4 text-[15px] font-semibold text-white shadow-lift"
+          className="mx-auto block w-full max-w-[400px] rounded-2xl bg-[#9d86fc] py-4 text-[15px] font-semibold text-white shadow-lift disabled:opacity-60"
         >
           Continue to skin scan
         </button>

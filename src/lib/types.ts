@@ -50,29 +50,28 @@ export interface DailyRecommendation {
   riskLevel: "low" | "moderate" | "high";
 }
 
-/** "What's happening tomorrow?" from the daily check-in (src/routes/scan.check-in.tsx)
+/** "What's happening?" (event TYPE) from the daily check-in (src/routes/scan.check-in.tsx)
  * — modifies today's recommendation, never overrides the skin-analysis-driven
- * baseline. "cosmetic-treatment" has no adjustment rule for the MVP; it's kept
- * as a distinct value (rather than folded into "none") so the check-in chip's
- * selection is preserved faithfully even though it doesn't affect output yet.
- * See src/lib/scheduleAdjustments.ts. */
+ * baseline. Always paired with EventTiming (below) — TYPE picks the kind of
+ * adjustment, TIMING picks how strongly it applies. See src/lib/scheduleAdjustments.ts. */
 export type ScheduleOption =
   "important-event" | "outdoor-day" | "travel" | "cosmetic-treatment" | "none";
+
+/** "When is it?" (event TIMING) from the daily check-in — sibling field to
+ * ScheduleOption, not nested: both are set together from the same check-in
+ * step and stored together in appStore/localStorage, so there's still one
+ * source of truth for "the user's upcoming plan," just as two flat fields
+ * rather than one object (matches how every other RecommendationInput field
+ * is already flat). "none" whenever ScheduleOption is "none". */
+export type EventTiming = "tomorrow" | "three-days" | "week" | "none";
 
 export interface RecommendationInput {
   analysis: SkinAnalysisResult;
   symptoms: string[];
   sensitivities: string[];
   recentActives: string[];
-  /** Deprecated in favor of scheduleTomorrow — kept only so the MCP get_recommendation
-   * tool (src/lib/mcp/tools/get-recommendation.ts) keeps compiling. No longer read by
-   * generateRecommendation(); permanently stuck at the mock "tomorrow" value in the
-   * app itself, since nothing ever called the old setEvent(). */
-  upcomingEvent?: {
-    type: string;
-    timing: "tomorrow" | "three-days" | "week" | "none";
-  };
   scheduleTomorrow?: ScheduleOption;
+  eventTiming?: EventTiming;
   ingredientHistory?: Record<string, "helpful" | "neutral" | "irritating" | "unknown">;
 }
 
@@ -114,11 +113,4 @@ export interface Ingredient {
   cautionChips?: string[];
   /** Longer safety notes shown for level 4 */
   safetyNotes?: string[];
-}
-
-export interface UpcomingEvent {
-  type: string;
-  label: string;
-  timing: "tomorrow" | "three-days" | "week" | "none";
-  whenLabel: string;
 }

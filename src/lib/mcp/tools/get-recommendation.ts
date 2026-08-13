@@ -26,10 +26,16 @@ export default defineTool({
       .array(z.string())
       .optional()
       .describe("Known sensitivities to filter from prioritized ingredients."),
+    eventType: z
+      .enum(["important-event", "outdoor-day", "travel", "cosmetic-treatment", "none"])
+      .optional()
+      .describe("Kind of any upcoming plan that should influence today's plan."),
     eventTiming: z
       .enum(["tomorrow", "three-days", "week", "none"])
       .optional()
-      .describe("Timing of any upcoming event that should influence today's plan."),
+      .describe(
+        "Timing of the upcoming plan — how strongly it adjusts today's plan (tomorrow = strongest).",
+      ),
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: ({
@@ -42,6 +48,7 @@ export default defineTool({
     ageSpots,
     symptoms,
     sensitivities,
+    eventType,
     eventTiming,
   }) => {
     const analysis: SkinAnalysisResult = {
@@ -59,8 +66,8 @@ export default defineTool({
       symptoms: symptoms ?? [],
       sensitivities: sensitivities ?? [],
       recentActives: [],
-      upcomingEvent:
-        eventTiming && eventTiming !== "none" ? { type: "event", timing: eventTiming } : undefined,
+      scheduleTomorrow: eventType,
+      eventTiming,
     });
     return {
       content: [
