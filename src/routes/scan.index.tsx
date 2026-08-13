@@ -18,13 +18,60 @@ function Scan() {
   const [scanning, setScanning] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!scanning) return;
     const t = setInterval(() => setStep((s) => Math.min(s + 1, ANALYSIS_STEPS.length - 1)), 400);
     return () => clearInterval(t);
   }, [scanning]);
+
+  // Live webcam preview: request the camera once on mount and bind the stream
+  // to the always-mounted <video> element so it's ready before React flips
+  // cameraReady (conditionally mounting <video> instead would race the ref).
+  useEffect(() => {
+    let cancelled = false;
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError("Camera not available in this browser. Upload a photo instead.");
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => {});
+        }
+        if (!cancelled) setCameraReady(true);
+      } catch (err) {
+        if (!cancelled) {
+          setCameraError(
+            err instanceof Error && err.name === "NotAllowedError"
+              ? "Camera access denied. Allow camera access or upload a photo instead."
+              : "Couldn't access your camera. Upload a photo instead.",
+          );
+        }
+      }
+    }
+    startCamera();
+    return () => {
+      cancelled = true;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    };
+  }, []);
 
   const start = async (image: Blob) => {
     setError(null);
@@ -54,6 +101,50 @@ function Scan() {
   };
 
   const openPicker = () => fileInputRef.current?.click();
+
+  // Matches the aspect-[3/4] preview frame below — the <video> is displayed
+  // with object-cover inside that frame, so capture must crop to the same
+  // region. Otherwise we'd send the full, uncropped webcam frame (much more
+  // background, face proportionally smaller than what the user framed),
+  // which is what caused YouCam's error_src_face_too_small.
+  const FRAME_ASPECT = 3 / 4;
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video || !cameraReady || !video.videoWidth) {
+      openPicker();
+      return;
+    }
+    const sourceAspect = video.videoWidth / video.videoHeight;
+    let sx = 0;
+    let sy = 0;
+    let sw = video.videoWidth;
+    let sh = video.videoHeight;
+    if (sourceAspect > FRAME_ASPECT) {
+      sw = video.videoHeight * FRAME_ASPECT;
+      sx = (video.videoWidth - sw) / 2;
+    } else {
+      sh = video.videoWidth / FRAME_ASPECT;
+      sy = (video.videoHeight - sh) / 2;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = sw;
+    canvas.height = sh;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      openPicker();
+      return;
+    }
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+    canvas.toBlob(
+      (blob) => {
+        if (blob) start(blob);
+        else openPicker();
+      },
+      "image/jpeg",
+      0.92,
+    );
+  };
 
   const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,10 +178,20 @@ function Scan() {
         />
         <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,440px)_1fr]">
           <div className="relative mx-auto mt-2 aspect-[3/4] w-full overflow-hidden rounded-[28px] bg-gradient-to-br from-[#F5EFE4] to-[#EDDDC8] lg:mt-0 lg:max-w-[440px]">
-            {/* Face placeholder */}
-            <div className="absolute inset-0 grid place-items-center">
-              <FaceIllustration />
-            </div>
+            {/* Live camera preview */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`absolute inset-0 h-full w-full object-cover [transform:scaleX(-1)] ${cameraReady ? "opacity-100" : "opacity-0"}`}
+            />
+            {/* Face placeholder, shown until the camera stream is ready */}
+            {!cameraReady && (
+              <div className="absolute inset-0 grid place-items-center">
+                <FaceIllustration />
+              </div>
+            )}
             {/* Mesh overlay */}
             <MeshOverlay />
             {/* Corners */}
@@ -101,7 +202,10 @@ function Scan() {
 
             {/* Instruction pill */}
             <div className="absolute left-1/2 top-4 -translate-x-1/2 max-w-[85%] rounded-full bg-black/60 px-4 py-1.5 text-center text-[12px] font-medium text-white">
-              {error ?? (scanning ? ANALYSIS_STEPS[step] : "Position your face in the frame")}
+              {error ??
+                (scanning
+                  ? ANALYSIS_STEPS[step]
+                  : (cameraError ?? "Position your face in the frame"))}
             </div>
 
             {/* Bottom controls */}
@@ -119,7 +223,7 @@ function Scan() {
                   <ImageIcon size={18} />
                 </button>
                 <button
-                  onClick={openPicker}
+                  onClick={capturePhoto}
                   disabled={scanning}
                   aria-label="Capture"
                   className="grid h-[72px] w-[72px] place-items-center rounded-full bg-white shadow-lift ring-4 ring-sage disabled:opacity-70"
@@ -161,10 +265,12 @@ function Scan() {
                 </li>
               ))}
             </ul>
-            {error && <p className="mt-4 text-[13px] font-medium text-coral">{error}</p>}
+            {(error || cameraError) && (
+              <p className="mt-4 text-[13px] font-medium text-coral">{error ?? cameraError}</p>
+            )}
             <div className="mt-6 flex flex-wrap gap-2">
               <button
-                onClick={openPicker}
+                onClick={capturePhoto}
                 disabled={scanning}
                 className="rounded-2xl bg-brand px-6 py-3 text-[14px] font-semibold text-white disabled:opacity-70"
               >
