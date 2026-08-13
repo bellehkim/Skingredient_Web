@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { z } from "zod";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { SafetyNotice } from "@/components/app/SafetyNotice";
@@ -27,12 +28,21 @@ const whatsHappening = [
 ];
 const timingOptions = ["Tomorrow", "Within 3 days", "Within a week"];
 
+const checkInSearchSchema = z.object({
+  // Carried through from onboarding (see onboarding.tsx) so submit can send
+  // the user on to the standalone scan page (/scan?onboarding=true) instead
+  // of the normal one — same flag, same pattern as scan.index.tsx/results.tsx.
+  onboarding: z.boolean().optional(),
+});
+
 export const Route = createFileRoute("/scan/check-in")({
   head: () => ({ meta: [{ title: "Daily check-in — Skingredient" }] }),
+  validateSearch: checkInSearchSchema,
   component: CheckIn,
 });
 
 function CheckIn() {
+  const { onboarding: fromOnboarding } = Route.useSearch();
   const navigate = useNavigate();
   const router = useRouter();
   // Reachable from Home's "Today's skin check" banner, Home's "Scan skin"
@@ -48,7 +58,12 @@ function CheckIn() {
   const [selWhat, setSelWhat] = useState<string | null>(null);
   const [selTiming, setSelTiming] = useState<string | null>(null);
   const needsTiming = selWhat !== null && selWhat !== "Nothing special";
-  const canContinue = !needsTiming || selTiming !== null;
+  // Requires an actual pick in every section — including "What's happening?"
+  // itself: needsTiming stays false before anything is chosen there too, so
+  // that condition alone can't be the only gate or Continue would enable
+  // with the event-type question never answered at all.
+  const canContinue =
+    selFeel.length > 0 && selTried.length > 0 && selWhat !== null && (!needsTiming || selTiming !== null);
 
   const warn = useMemo(
     () => selFeel.some((s) => ["Burning", "Stinging"].includes(s)) || selFeel.includes("Swelling"),
@@ -81,14 +96,17 @@ function CheckIn() {
           </div>
         )}
 
-        <h3 className="mt-8 text-[17px] font-semibold text-ink">Did you try anything new?</h3>
+        <h3 className="mt-8 text-[22px] font-bold text-ink lg:text-[26px]">
+          Did you try anything new?
+        </h3>
+        <p className="mt-1 text-[13px] text-ink-muted">Select any that apply.</p>
         <ChipGrid
           options={tried}
           selected={selTried}
           onToggle={(v) => toggle(selTried, setSelTried, v)}
         />
 
-        <h3 className="mt-8 text-[17px] font-semibold text-ink">What's happening?</h3>
+        <h3 className="mt-8 text-[22px] font-bold text-ink lg:text-[26px]">What's happening?</h3>
         <ChipGrid
           options={whatsHappening}
           selected={selWhat ? [selWhat] : []}
@@ -100,7 +118,7 @@ function CheckIn() {
 
         {needsTiming && (
           <>
-            <h3 className="mt-8 text-[17px] font-semibold text-ink">When is it?</h3>
+            <h3 className="mt-8 text-[22px] font-bold text-ink lg:text-[26px]">When is it?</h3>
             <ChipGrid
               options={timingOptions}
               selected={selTiming ? [selTiming] : []}
@@ -114,14 +132,15 @@ function CheckIn() {
         <button
           disabled={!canContinue}
           onClick={() => {
+            if (!canContinue) return;
             const mapped = selFeel.map((s) => s.toLowerCase().replace(/\s+/g, "-"));
             setSymptoms(mapped);
             setScheduleTomorrow(resolveScheduleOption(selWhat));
             setEventTiming(needsTiming ? resolveEventTiming(selTiming) : "none");
             markScanCompleted();
-            navigate({ to: "/scan" });
+            navigate({ to: "/scan", search: { onboarding: fromOnboarding } });
           }}
-          className="mx-auto block w-full max-w-[400px] rounded-2xl bg-[#9d86fc] py-4 text-[15px] font-semibold text-white shadow-lift disabled:opacity-60"
+          className="mx-auto block w-full max-w-[400px] rounded-2xl bg-brand py-4 text-[15px] font-semibold text-white shadow-lift disabled:cursor-not-allowed disabled:opacity-40"
         >
           Continue to skin scan
         </button>
@@ -148,7 +167,7 @@ function ChipGrid({
             key={o}
             onClick={() => onToggle(o)}
             className={`rounded-full border px-4 py-2 text-[13px] font-medium transition ${
-              on ? "border-[#9d86fc] bg-[#9d86fc] text-white" : "border-hairline bg-white text-ink"
+              on ? "border-brand bg-brand text-white" : "border-hairline bg-white text-ink"
             }`}
           >
             {o}

@@ -1,6 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { HelpCircle, Image as ImageIcon } from "lucide-react";
+import { z } from "zod";
 import { AppShell } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { skinAnalysisService, ANALYSIS_STEPS } from "@/lib/skinAnalysisService";
@@ -12,13 +13,31 @@ import { deriveSkinConcerns } from "@/lib/skinConcerns";
 import type { SkinStrategyInput } from "@/lib/skinStrategyService";
 import type { SkinAnalysisResult } from "@/lib/types";
 
+const scanSearchSchema = z.object({
+  // Set only when arriving straight from the onboarding survey (see
+  // onboarding.tsx) — a brand-new user hasn't "entered" the app yet (no
+  // shelf, no history), so this scan should read as a continuation of the
+  // survey rather than a jump into the main app shell. Reached normally
+  // (bottom nav / sidebar), the full chrome is correct as-is.
+  onboarding: z.boolean().optional(),
+});
+
 export const Route = createFileRoute("/scan/")({
   head: () => ({ meta: [{ title: "Skin Scan — Skingredient" }] }),
+  validateSearch: scanSearchSchema,
   component: Scan,
 });
 
 function Scan() {
+  const { onboarding: fromOnboarding } = Route.useSearch();
   const navigate = useNavigate();
+  const router = useRouter();
+  // Reached normally (bottom nav/sidebar), Scan is a peer top-level page and
+  // deliberately has no back arrow, like Ingredients/Routine. But arriving
+  // via onboarding it's a step in a flow (survey -> check-in -> here), so it
+  // should be able to go back to check-in — history-based since that's the
+  // only entry point in this case.
+  const goBack = fromOnboarding ? () => router.history.back() : undefined;
   const { setAnalysis, scheduleTomorrow, eventTiming, products } = useAppStore();
   const [scanning, setScanning] = useState(false);
   const [step, setStep] = useState(0);
@@ -129,7 +148,7 @@ function Scan() {
       }
 
       setAnalysis(saved);
-      setTimeout(() => navigate({ to: "/results" }), 300);
+      setTimeout(() => navigate({ to: "/results", search: { onboarding: fromOnboarding } }), 300);
     } catch (err) {
       setScanning(false);
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -189,9 +208,10 @@ function Scan() {
   };
 
   return (
-    <AppShell title="Skin Scan">
+    <AppShell title="Skin Scan" hideNav={fromOnboarding} onBack={goBack}>
       <MobileHeader
         title="Skin Scan"
+        onBack={goBack}
         rightSlot={
           <Link
             to="/"
@@ -202,7 +222,7 @@ function Scan() {
           </Link>
         }
       />
-      <div className="px-5 lg:px-10 lg:pt-8">
+      <div className="px-5 lg:mx-auto lg:max-w-[900px] lg:px-10 lg:pt-8">
         <input
           ref={fileInputRef}
           type="file"
@@ -303,20 +323,24 @@ function Scan() {
               >
                 <ImageIcon size={16} /> Upload photo
               </button>
-              <Link
-                to="/scan/check-in"
-                className="inline-flex items-center rounded-2xl border border-hairline bg-white px-6 py-3 text-[14px] font-semibold text-brand"
-              >
-                Daily check-in
-              </Link>
+              {!fromOnboarding && (
+                <Link
+                  to="/scan/check-in"
+                  className="inline-flex items-center rounded-2xl border border-hairline bg-white px-6 py-3 text-[14px] font-semibold text-brand"
+                >
+                  Daily check-in
+                </Link>
+              )}
             </div>
           </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between px-1 text-[13px] text-ink-muted lg:mt-8">
-          <Link to="/scan/check-in" className="font-medium text-brand lg:hidden">
-            Daily check-in
-          </Link>
+          {!fromOnboarding && (
+            <Link to="/scan/check-in" className="font-medium text-brand lg:hidden">
+              Daily check-in
+            </Link>
+          )}
           <span>Skingredient does not diagnose medical conditions.</span>
         </div>
       </div>

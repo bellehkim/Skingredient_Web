@@ -63,6 +63,14 @@ interface AppState {
   ingredientHistory: Record<string, Reaction>;
   scanCompletedToday: boolean;
   hasCompletedOnboarding: boolean;
+  /** In-progress onboarding survey answers (src/routes/onboarding.tsx) —
+   * lifted out of that route's local state so navigating away mid-survey
+   * (e.g. Finish -> /scan/check-in) and then back doesn't remount the
+   * component and silently wipe progress back to step 1. */
+  onboardingStep: number;
+  onboardingAnswers: string[][];
+  setOnboardingStep: (step: number) => void;
+  setOnboardingAnswers: (answers: string[][]) => void;
   setSymptoms: (s: string[]) => void;
   setScheduleTomorrow: (s: ScheduleOption) => void;
   setEventTiming: (t: EventTiming) => void;
@@ -101,6 +109,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [ingredientHistory, setIngredientHistory] = useState<Record<string, Reaction>>({});
   const [lastScanDay, setLastScanDay] = useState<string | null>(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [onboardingAnswers, setOnboardingAnswers] = useState<string[][]>([]);
 
   useEffect(() => {
     try {
@@ -227,6 +237,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ingredientHistory,
     scanCompletedToday: lastScanDay === todayKey(),
     hasCompletedOnboarding,
+    onboardingStep,
+    onboardingAnswers,
+    setOnboardingStep,
+    setOnboardingAnswers,
     setSymptoms,
     setScheduleTomorrow,
     setEventTiming,
@@ -264,6 +278,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     recordReaction: (ingredient, r) =>
       setIngredientHistory((prev) => ({ ...prev, [ingredient.toLowerCase()]: r })),
     markScanCompleted: () => setLastScanDay(todayKey()),
+    // Deliberately does NOT reset onboardingStep/onboardingAnswers: this
+    // fires right as the user leaves the survey for check-in, and clearing
+    // them here would wipe the very state that lets check-in's back button
+    // return to the survey's last step instead of remounting at step 1.
+    // resetOnboarding (a real "start over") is where that clears.
     completeOnboarding: () => {
       setHasCompletedOnboarding(true);
       setOnboardingCompleted(true).catch((err) =>
@@ -272,6 +291,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     },
     resetOnboarding: () => {
       setHasCompletedOnboarding(false);
+      setOnboardingStep(0);
+      setOnboardingAnswers([]);
       setOnboardingCompleted(false).catch((err) =>
         console.error("Failed to persist onboarding reset", err),
       );
