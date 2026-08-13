@@ -47,7 +47,7 @@ function CheckIn() {
     set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
   return (
-    <AppShell hideNav>
+    <AppShell hideNav title="Daily check-in" back="/scan">
       <MobileHeader title="Daily check-in" back="/scan" />
       <PageContainer width="narrow" className="pb-32">
         <h2 className="text-[22px] font-bold text-ink lg:text-[26px]">

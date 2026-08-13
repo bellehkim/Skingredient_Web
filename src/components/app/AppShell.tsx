@@ -26,9 +26,11 @@ export function AppShell({
       >
         {!hideNav && <SidebarNavigation />}
         <div className="flex min-w-0 flex-1 flex-col">
-          {!hideNav && (
-            <DesktopTopBar title={title} breadcrumb={breadcrumb} back={back} actions={actions} />
-          )}
+          {/* Not gated on hideNav: pages that hide the sidebar/bottom nav (e.g. a
+              full-bleed flow with a fixed-bottom CTA) can still opt into a desktop
+              back button by passing `back`/`title` — DesktopTopBar itself renders
+              nothing when none of title/breadcrumb/actions are given. */}
+          <DesktopTopBar title={title} breadcrumb={breadcrumb} back={back} actions={actions} />
           <main className={`flex-1 ${hideNav ? "" : "pb-24 lg:pb-12"}`}>{children}</main>
           {!hideNav && (
             <div className="lg:hidden">
