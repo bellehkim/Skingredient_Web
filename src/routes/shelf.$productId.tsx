@@ -14,13 +14,21 @@ export const Route = createFileRoute("/shelf/$productId")({
 
 function ProductDetail() {
   const { productId } = Route.useParams();
-  const { products, recordReaction, removeFromShelf } = useAppStore();
+  const { products, recordReaction, removeFromShelf, ingredientLibrary } = useAppStore();
   const product = products.find((p) => p.id === productId);
   const [fav, setFav] = useState(false);
   const [reaction, setReaction] = useState<string | null>(null);
   const navigate = useNavigate();
 
   if (!product) throw notFound();
+
+  // product.keyIngredients are always inci_name strings (from the catalog),
+  // so match against inciName here, not the library's friendlier name.
+  // Ingredients outside the curated ~20 (e.g. Fragrance, Titanium Dioxide)
+  // simply have no match — their chip stays plain, non-clickable text.
+  const ingredientIdByInciName = new Map(
+    ingredientLibrary.map((entry) => [entry.inciName.toLowerCase(), entry.id]),
+  );
 
   return (
     <AppShell
@@ -73,7 +81,12 @@ function ProductDetail() {
               </h1>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {product.keyIngredients.map((i) => (
-                  <IngredientChip key={i} label={i} tone="brand" />
+                  <IngredientChip
+                    key={i}
+                    label={i}
+                    tone="brand"
+                    ingredientId={ingredientIdByInciName.get(i.toLowerCase())}
+                  />
                 ))}
               </div>
               <div className="mt-3">

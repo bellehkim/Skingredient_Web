@@ -43,15 +43,29 @@ export interface DailyRecommendation {
   riskLevel: "low" | "moderate" | "high";
 }
 
+/** "What's happening tomorrow?" from the daily check-in (src/routes/scan.check-in.tsx)
+ * — modifies today's recommendation, never overrides the skin-analysis-driven
+ * baseline. "cosmetic-treatment" has no adjustment rule for the MVP; it's kept
+ * as a distinct value (rather than folded into "none") so the check-in chip's
+ * selection is preserved faithfully even though it doesn't affect output yet.
+ * See src/lib/scheduleAdjustments.ts. */
+export type ScheduleOption =
+  "important-event" | "outdoor-day" | "travel" | "cosmetic-treatment" | "none";
+
 export interface RecommendationInput {
   analysis: SkinAnalysisResult;
   symptoms: string[];
   sensitivities: string[];
   recentActives: string[];
+  /** Deprecated in favor of scheduleTomorrow — kept only so the MCP get_recommendation
+   * tool (src/lib/mcp/tools/get-recommendation.ts) keeps compiling. No longer read by
+   * generateRecommendation(); permanently stuck at the mock "tomorrow" value in the
+   * app itself, since nothing ever called the old setEvent(). */
   upcomingEvent?: {
     type: string;
     timing: "tomorrow" | "three-days" | "week" | "none";
   };
+  scheduleTomorrow?: ScheduleOption;
   ingredientHistory?: Record<string, "helpful" | "neutral" | "irritating" | "unknown">;
 }
 

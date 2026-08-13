@@ -1,4 +1,5 @@
 import type { DailyRecommendation, RecommendationInput, SkinDirection } from "./types";
+import { applyScheduleAdjustment } from "./scheduleAdjustments";
 
 const DISPLAY: Record<SkinDirection, string> = {
   "barrier-recovery": "Barrier Recovery",
@@ -12,9 +13,8 @@ const DISPLAY: Record<SkinDirection, string> = {
 const SEVERE_SYMPTOMS = ["burning", "swelling", "severe-itching", "rash"];
 
 export function generateRecommendation(input: RecommendationInput): DailyRecommendation {
-  const { analysis, symptoms, sensitivities, upcomingEvent, ingredientHistory } = input;
+  const { analysis, symptoms, sensitivities, scheduleTomorrow, ingredientHistory } = input;
   const severe = symptoms.some((s) => SEVERE_SYMPTOMS.includes(s));
-  const eventTomorrow = upcomingEvent?.timing === "tomorrow";
 
   let direction: SkinDirection = "hydration-support";
   let prioritized: string[] = [];
@@ -73,9 +73,17 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
     explanation = "A gentle, controlled exfoliation plan can help refine texture.";
   }
 
-  if (eventTomorrow && risk !== "high") {
-    avoided = Array.from(new Set([...avoided, "New active ingredients", "Retinoids", "AHA"]));
-    explanation += " With your event tomorrow, we're favoring calming, predictable products.";
+  // Tomorrow's schedule context (src/routes/scan.check-in.tsx) modifies the
+  // skin-analysis baseline above — it never overrides it, and is skipped for
+  // "pause-actives" days since that direction already avoids everything strong.
+  if (risk !== "high" && scheduleTomorrow) {
+    const adjusted = applyScheduleAdjustment(
+      { prioritizedIngredients: prioritized, avoidedIngredients: avoided, explanation },
+      scheduleTomorrow,
+    );
+    prioritized = adjusted.prioritizedIngredients;
+    avoided = adjusted.avoidedIngredients;
+    explanation = adjusted.explanation;
   }
 
   if (ingredientHistory) {

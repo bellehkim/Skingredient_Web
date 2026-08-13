@@ -15,11 +15,13 @@ import {
 } from "./data/customProducts";
 import { buildProductsFromCatalog } from "./productMatching";
 import { getTodaysRecommendations } from "./productRecommendations";
+import { getIngredientLibrary, type IngredientLibraryEntry } from "./data/ingredientLibrary";
 import { getProfile, setOnboardingCompleted } from "./data/profile";
 import type {
   DailyRecommendation,
   Product,
   ProductStatus,
+  ScheduleOption,
   SkinAnalysisResult,
   UpcomingEvent,
 } from "./types";
@@ -40,12 +42,20 @@ interface AppState {
   /** Only products the user has explicitly saved (shelf_items) — never the
    * catalog itself. */
   products: Product[];
+  /** The curated Ingredient Library — src/routes/ingredients.index.tsx and
+   * ingredients.$ingredientId.tsx, and used to link Shelf ingredient chips. */
+  ingredientLibrary: IngredientLibraryEntry[];
   symptoms: string[];
+  /** "What's happening tomorrow?" from the daily check-in — modifies today's
+   * recommendation (src/lib/scheduleAdjustments.ts), never overrides the
+   * skin-analysis baseline. */
+  scheduleTomorrow: ScheduleOption;
   recommendation: DailyRecommendation;
   ingredientHistory: Record<string, Reaction>;
   scanCompletedToday: boolean;
   hasCompletedOnboarding: boolean;
   setSymptoms: (s: string[]) => void;
+  setScheduleTomorrow: (s: ScheduleOption) => void;
   setAnalysis: (a: SkinAnalysisResult) => void;
   setEvent: (e: UpcomingEvent) => void;
   updateProductStatus: (id: string, status: ProductStatus) => void;
@@ -75,8 +85,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [shelfProductIds, setShelfProductIds] = useState<string[]>([]);
   const [customProducts, setCustomProducts] = useState<Product[]>([]);
+  const [ingredientLibrary, setIngredientLibrary] = useState<IngredientLibraryEntry[]>([]);
   const [statusOverrides, setStatusOverrides] = useState<Record<string, ProductStatus>>({});
   const [symptoms, setSymptoms] = useState<string[]>([]);
+  const [scheduleTomorrow, setScheduleTomorrow] = useState<ScheduleOption>("none");
   const [ingredientHistory, setIngredientHistory] = useState<Record<string, Reaction>>({});
   const [lastScanDay, setLastScanDay] = useState<string | null>(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
@@ -87,6 +99,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const s = JSON.parse(raw);
         if (s.symptoms) setSymptoms(s.symptoms);
+        if (s.scheduleTomorrow) setScheduleTomorrow(s.scheduleTomorrow);
         if (s.ingredientHistory) setIngredientHistory(s.ingredientHistory);
         if (s.lastScanDay) setLastScanDay(s.lastScanDay);
       }
@@ -99,12 +112,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(
         "skingredient",
-        JSON.stringify({ symptoms, ingredientHistory, lastScanDay }),
+        JSON.stringify({ symptoms, scheduleTomorrow, ingredientHistory, lastScanDay }),
       );
     } catch {
       // localStorage unavailable/corrupt — ignore, keep defaults.
     }
-  }, [symptoms, ingredientHistory, lastScanDay]);
+  }, [symptoms, scheduleTomorrow, ingredientHistory, lastScanDay]);
 
   // Hydrate from Supabase on mount — pure reads, never call YouCam/Claude.
   // If the user has a real saved analysis, prefer it over mockAnalysis so a
@@ -130,6 +143,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     getCustomProducts()
       .then(setCustomProducts)
       .catch((err) => console.error("Failed to load custom products", err));
+
+    getIngredientLibrary()
+      .then(setIngredientLibrary)
+      .catch((err) => console.error("Failed to load ingredient library", err));
   }, []);
 
   const recommendation = useMemo(
@@ -139,10 +156,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         symptoms,
         sensitivities: mockUser.sensitivities,
         recentActives: [],
-        upcomingEvent: { type: event.type, timing: event.timing },
+        scheduleTomorrow,
         ingredientHistory,
       }),
-    [analysis, symptoms, event, ingredientHistory],
+    [analysis, symptoms, scheduleTomorrow, ingredientHistory],
   );
 
   // Skin concern → ingredient category → matching products, per
@@ -177,12 +194,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     recommendedProducts,
     todaysPicks,
     products,
+    ingredientLibrary,
     symptoms,
+    scheduleTomorrow,
     recommendation,
     ingredientHistory,
     scanCompletedToday: lastScanDay === todayKey(),
     hasCompletedOnboarding,
     setSymptoms,
+    setScheduleTomorrow,
     setAnalysis,
     setEvent,
     updateProductStatus: (id, status) => setStatusOverrides((prev) => ({ ...prev, [id]: status })),
