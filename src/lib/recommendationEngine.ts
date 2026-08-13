@@ -36,11 +36,23 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
     risk = "moderate";
     explanation = "Your skin looks dehydrated and slightly reactive today.";
   } else if (analysis.acne <= 35) {
+    // Acne alone doesn't rule out a barrier problem — when hydration is also
+    // reduced (same threshold the barrier-recovery branch above uses), add
+    // 1-2 barrier ingredients so Today's Plan doesn't ignore it, and stop
+    // blanket-avoiding occlusives: they support barrier repair and aren't a
+    // real acne risk on their own (only stacking multiple actives is).
+    const alsoNeedsBarrierSupport = analysis.hydration <= 55;
     direction = "blemish-control";
-    prioritized = ["Salicylic Acid", "Azelaic Acid", "Niacinamide"];
-    avoided = ["Multiple exfoliating actives at once", "Heavy occlusives"];
+    prioritized = alsoNeedsBarrierSupport
+      ? ["Salicylic Acid", "Azelaic Acid", "Niacinamide", "Ceramides", "Panthenol"]
+      : ["Salicylic Acid", "Azelaic Acid", "Niacinamide"];
+    avoided = alsoNeedsBarrierSupport
+      ? ["Multiple exfoliating actives at once"]
+      : ["Multiple exfoliating actives at once", "Heavy occlusives"];
     risk = "moderate";
-    explanation = "Focus on gentle blemish control without overloading actives.";
+    explanation = alsoNeedsBarrierSupport
+      ? "Focus on gentle blemish control while also supporting your barrier, since hydration is reduced too."
+      : "Focus on gentle blemish control without overloading actives.";
   } else if (analysis.hydration <= 45) {
     direction = "hydration-support";
     prioritized = ["Glycerin", "Hyaluronic Acid", "Beta-Glucan", "Panthenol"];

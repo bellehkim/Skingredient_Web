@@ -94,7 +94,8 @@ export async function getLatestAnalysis(): Promise<SkinAnalysisResult | null> {
   return data ? rowToResult(data as SkinAnalysisRow) : null;
 }
 
-/** Most recent analyses for the current user, newest first. Not yet consumed by any UI. */
+/** Most recent analyses for the current user, newest first. Powers the
+ * History tab (src/routes/insights.tsx). */
 export async function getAnalysisHistory(limit = 30): Promise<SkinAnalysisResult[]> {
   const userId = await getCurrentUserId();
 
@@ -107,6 +108,23 @@ export async function getAnalysisHistory(limit = 30): Promise<SkinAnalysisResult
 
   if (error) throw error;
   return (data as SkinAnalysisRow[]).map(rowToResult);
+}
+
+/** A single past analysis by id, for the History detail view — or null if it
+ * doesn't exist (or belongs to a different user). Pure read; never
+ * regenerates YouCam/Claude output. */
+export async function getAnalysisById(id: string): Promise<SkinAnalysisResult | null> {
+  const userId = await getCurrentUserId();
+
+  const { data, error } = await supabase
+    .from("skin_analyses")
+    .select()
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? rowToResult(data as SkinAnalysisRow) : null;
 }
 
 /**

@@ -21,6 +21,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiSkinAnalysisRouteImport } from './routes/api/skin-analysis'
 import { Route as ApiSkinDirectionRouteImport } from './routes/api/skin-direction'
+import { Route as HistoryAnalysisIdRouteImport } from './routes/history.$analysisId'
 import { Route as IngredientsIndexRouteImport } from './routes/ingredients.index'
 import { Route as IngredientsIngredientIdRouteImport } from './routes/ingredients.$ingredientId'
 import { Route as ScanIndexRouteImport } from './routes/scan.index'
@@ -92,6 +93,11 @@ const ApiSkinDirectionRoute = ApiSkinDirectionRouteImport.update({
   path: '/api/skin-direction',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HistoryAnalysisIdRoute = HistoryAnalysisIdRouteImport.update({
+  id: '/history/$analysisId',
+  path: '/history/$analysisId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IngredientsIndexRoute = IngredientsIndexRouteImport.update({
   id: '/ingredients/',
   path: '/ingredients/',
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/skin-analysis': typeof ApiSkinAnalysisRoute
   '/api/skin-direction': typeof ApiSkinDirectionRoute
+  '/history/$analysisId': typeof HistoryAnalysisIdRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
@@ -169,6 +176,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/skin-analysis': typeof ApiSkinAnalysisRoute
   '/api/skin-direction': typeof ApiSkinDirectionRoute
+  '/history/$analysisId': typeof HistoryAnalysisIdRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/skin-analysis': typeof ApiSkinAnalysisRoute
   '/api/skin-direction': typeof ApiSkinDirectionRoute
+  '/history/$analysisId': typeof HistoryAnalysisIdRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/skin-analysis'
     | '/api/skin-direction'
+    | '/history/$analysisId'
     | '/ingredients/$ingredientId'
     | '/scan/check-in'
     | '/shelf/$productId'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/skin-analysis'
     | '/api/skin-direction'
+    | '/history/$analysisId'
     | '/ingredients/$ingredientId'
     | '/scan/check-in'
     | '/shelf/$productId'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/skin-analysis'
     | '/api/skin-direction'
+    | '/history/$analysisId'
     | '/ingredients/$ingredientId'
     | '/scan/check-in'
     | '/shelf/$productId'
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiSkinAnalysisRoute: typeof ApiSkinAnalysisRoute
   ApiSkinDirectionRoute: typeof ApiSkinDirectionRoute
+  HistoryAnalysisIdRoute: typeof HistoryAnalysisIdRoute
   IngredientsIngredientIdRoute: typeof IngredientsIngredientIdRoute
   ScanCheckInRoute: typeof ScanCheckInRoute
   ShelfProductIdRoute: typeof ShelfProductIdRoute
@@ -379,6 +392,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSkinDirectionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/history/$analysisId': {
+      id: '/history/$analysisId'
+      path: '/history/$analysisId'
+      fullPath: '/history/$analysisId'
+      preLoaderRoute: typeof HistoryAnalysisIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ingredients/': {
       id: '/ingredients/'
       path: '/ingredients'
@@ -452,6 +472,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiSkinAnalysisRoute: ApiSkinAnalysisRoute,
   ApiSkinDirectionRoute: ApiSkinDirectionRoute,
+  HistoryAnalysisIdRoute: HistoryAnalysisIdRoute,
   IngredientsIngredientIdRoute: IngredientsIngredientIdRoute,
   ScanCheckInRoute: ScanCheckInRoute,
   ShelfProductIdRoute: ShelfProductIdRoute,

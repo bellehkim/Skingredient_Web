@@ -57,34 +57,90 @@ describe("deriveOverallCondition", () => {
     expect(score).toBe(100);
   });
 
-  it("labels a low score as Reactive, mid as Uneven, high as Balanced", () => {
+  // Overall Condition describes today's state, not a skin type — labels are
+  // score bands (Excellent/Healthy/Balanced/Needs Support/Compromised), with
+  // one override: notably high redness always reads "Reactive" regardless
+  // of score, since that's a distinct actionable state, not a type word
+  // like the old per-concern labels ("Blemish-Prone" etc.) were.
+  it("labels score bands as Excellent/Healthy/Balanced/Needs Support/Compromised", () => {
+    const withScore = (allFieldsValue: number) =>
+      deriveOverallCondition(
+        analysis({
+          redness: allFieldsValue,
+          hydration: allFieldsValue,
+          oiliness: allFieldsValue,
+          acne: allFieldsValue,
+          pores: allFieldsValue,
+          texture: allFieldsValue,
+          ageSpots: allFieldsValue,
+        }),
+      );
+
+    expect(withScore(90).label).toBe("Excellent");
+    expect(withScore(75).label).toBe("Healthy");
+    expect(withScore(60).label).toBe("Balanced");
+    // Matches the reported case: acne 32, hydration 48 → score 53.
     expect(
       deriveOverallCondition(
         analysis({
-          redness: 10,
-          hydration: 10,
-          oiliness: 10,
-          acne: 10,
-          pores: 10,
-          texture: 10,
-          ageSpots: 10,
+          redness: 72,
+          hydration: 48,
+          oiliness: 52,
+          acne: 32,
+          pores: 41,
+          texture: 55,
+          ageSpots: 64,
         }),
       ).label,
-    ).toBe("Reactive");
+    ).toBe("Needs Support");
+    // Keep redness healthy here so the Reactive override (tested separately
+    // below) doesn't mask the Compromised band.
     expect(
       deriveOverallCondition(
         analysis({
-          redness: 50,
-          hydration: 50,
-          oiliness: 50,
-          acne: 50,
-          pores: 50,
-          texture: 50,
-          ageSpots: 50,
+          redness: 90,
+          hydration: 5,
+          oiliness: 5,
+          acne: 5,
+          pores: 5,
+          texture: 5,
+          ageSpots: 5,
         }),
       ).label,
-    ).toBe("Uneven");
-    expect(deriveOverallCondition(analysis({})).label).toBe("Balanced");
+    ).toBe("Compromised");
+  });
+
+  it("labels as Reactive whenever redness is Needs Attention tier, regardless of overall score", () => {
+    // High overall score, but redness itself is notably low.
+    const { label, score } = deriveOverallCondition(
+      analysis({
+        redness: 30,
+        hydration: 90,
+        oiliness: 90,
+        acne: 90,
+        pores: 90,
+        texture: 90,
+        ageSpots: 90,
+      }),
+    );
+    expect(score).toBeGreaterThan(69);
+    expect(label).toBe("Reactive");
+  });
+
+  it("does not use per-concern skin-type-sounding words (that belongs to deriveSkinType)", () => {
+    const acneDominant = deriveOverallCondition(
+      analysis({
+        redness: 50,
+        hydration: 50,
+        oiliness: 50,
+        acne: 10,
+        pores: 50,
+        texture: 50,
+        ageSpots: 50,
+      }),
+    );
+    expect(acneDominant.label).not.toBe("Blemish-Prone");
+    expect(acneDominant.label).not.toBe("Uneven");
   });
 
   it("names the single worst-scoring metric in the description", () => {

@@ -1,61 +1,41 @@
 import type { SkinAnalysisResult } from "./types";
 
-// Reuses the exact thresholds recommendationEngine.ts already treats as
-// meaningful (hydration <= 45 = needs hydration support; redness <= 35 =
-// barrier-recovery territory), and metricStatus.ts's tier boundary (39/69)
-// for the oiliness band — no new "magic numbers" invented for this.
-const OILY_UPPER_BOUND = 39;
-const HIGH_OILINESS_LOWER_BOUND = 70;
-const LOW_HYDRATION_THRESHOLD = 45;
-const LOW_REDNESS_THRESHOLD = 35;
+// `oiliness` (like every SkinAnalysisResult field) is a health-oriented
+// score where higher = healthier/better oil balance — it is NOT a literal
+// "amount of oil on the skin" measurement. A high oiliness score means oil
+// production is well-controlled (skin trends dry/normal); a low oiliness
+// score means oil production is poorly controlled (skin trends oily). Don't
+// read "oiliness >= 70" as "very oily" — it means the opposite.
+const LOW_UPPER_BOUND = 39;
+const HIGH_LOWER_BOUND = 70;
 
-export type SkinBaseType = "Oily" | "Dry" | "Combination" | "Balanced";
-export type SkinTypeModifier = "Dehydrated" | "Reactive";
-
-export interface SkinTypeResult {
-  baseType: SkinBaseType;
-  modifiers: SkinTypeModifier[];
-  label: string;
-}
+// Skin Type is the user's underlying type, not today's condition — that's
+// Overall Condition's job (src/lib/overallCondition.ts). So this only ever
+// returns one of these four values; it does not layer on
+// current-condition words like "Dehydrated" or "Reactive".
+export type SkinType = "Dry" | "Combination" | "Oily" | "Balanced";
 
 /**
  * Deterministic, non-AI classification of Skingredient's own skincare skin
  * type — distinct from YouCam's Fitzpatrick skin_type. Given the same
  * SkinAnalysisResult, always returns the same result.
  *
- * baseType uses only oiliness (primary) and hydration (to disambiguate
- * Dry/Combination/Balanced) — see the plan discussion for why acne/pores/
- * ageSpots/texture aren't used: none has a defensible causal link to
- * oily/dry/combination classification.
+ * Uses only oiliness (primary) and hydration (to disambiguate Dry/
+ * Combination/Balanced) — acne/pores/ageSpots/texture/redness aren't used:
+ * none has a defensible causal link to oily/dry/combination classification,
+ * and redness in particular is a today-condition signal, not a type signal.
  *
- * modifiers are current-condition signals, computed independently of
- * baseType, so low hydration doesn't quietly turn someone's base type into
- * "Dry" — it adds a "Dehydrated" modifier instead. This split matters for
- * longitudinal tracking: baseType should stay stable scan-to-scan; modifiers
- * can move day to day.
+ * Both Dry and Balanced require both metrics to genuinely clear a bound
+ * (LOW/HIGH) rather than merely not-failing the other — "not low hydration"
+ * alone isn't "healthy hydration", so mid-range (40-69) values on either
+ * metric never qualify as Balanced; they fall through to Combination, the
+ * catch-all for mixed/ambiguous patterns.
  */
-export function deriveSkinType(analysis: SkinAnalysisResult): SkinTypeResult {
-  const { oiliness, hydration, redness } = analysis;
-  const lowHydration = hydration <= LOW_HYDRATION_THRESHOLD;
+export function deriveSkinType(analysis: SkinAnalysisResult): SkinType {
+  const { oiliness, hydration } = analysis;
 
-  let baseType: SkinBaseType;
-  if (oiliness <= OILY_UPPER_BOUND) {
-    baseType = "Oily";
-  } else if (oiliness >= HIGH_OILINESS_LOWER_BOUND) {
-    baseType = lowHydration ? "Dry" : "Balanced";
-  } else {
-    // Moderate whole-face oiliness paired with low hydration is the classic
-    // signature of an oily-T-zone/drier-cheeks split — SD tier gives no
-    // per-region data, so this is an approximation, not a direct
-    // regional measurement.
-    baseType = lowHydration ? "Combination" : "Balanced";
-  }
-
-  const modifiers: SkinTypeModifier[] = [];
-  if (lowHydration) modifiers.push("Dehydrated");
-  if (redness <= LOW_REDNESS_THRESHOLD) modifiers.push("Reactive");
-
-  const label = modifiers.length > 0 ? `${baseType} · ${modifiers.join(" · ")}` : baseType;
-
-  return { baseType, modifiers, label };
+  if (oiliness <= LOW_UPPER_BOUND) return "Oily";
+  if (hydration <= LOW_UPPER_BOUND && oiliness >= HIGH_LOWER_BOUND) return "Dry";
+  if (hydration >= HIGH_LOWER_BOUND && oiliness >= HIGH_LOWER_BOUND) return "Balanced";
+  return "Combination";
 }

@@ -22,50 +22,46 @@ describe("deriveSkinType", () => {
     expect(deriveSkinType(a)).toEqual(deriveSkinType(a));
   });
 
-  it("classifies low oiliness as Oily regardless of hydration", () => {
-    expect(deriveSkinType(analysis({ oiliness: 20, hydration: 80 })).baseType).toBe("Oily");
+  it("classifies a low oiliness score as Oily regardless of hydration", () => {
+    expect(deriveSkinType(analysis({ oiliness: 20, hydration: 90 }))).toBe("Oily");
+    expect(deriveSkinType(analysis({ oiliness: 20, hydration: 10 }))).toBe("Oily");
   });
 
-  it("classifies high oiliness + low hydration as Dry", () => {
-    expect(deriveSkinType(analysis({ oiliness: 80, hydration: 40 })).baseType).toBe("Dry");
+  it("classifies low hydration + high oiliness score as Dry", () => {
+    expect(deriveSkinType(analysis({ hydration: 30, oiliness: 80 }))).toBe("Dry");
   });
 
-  it("classifies high oiliness + adequate hydration as Balanced", () => {
-    expect(deriveSkinType(analysis({ oiliness: 80, hydration: 60 })).baseType).toBe("Balanced");
+  it("classifies high hydration + high oiliness score as Balanced", () => {
+    expect(deriveSkinType(analysis({ hydration: 80, oiliness: 80 }))).toBe("Balanced");
   });
 
-  it("classifies moderate oiliness + low hydration as Combination", () => {
-    expect(deriveSkinType(analysis({ oiliness: 50, hydration: 40 })).baseType).toBe("Combination");
+  it("classifies mid hydration + mid oiliness score as Combination", () => {
+    expect(deriveSkinType(analysis({ hydration: 50, oiliness: 50 }))).toBe("Combination");
   });
 
-  it("classifies moderate oiliness + adequate hydration as Balanced", () => {
-    expect(deriveSkinType(analysis({ oiliness: 50, hydration: 60 })).baseType).toBe("Balanced");
+  it("classifies the reported case (hydration 48, oiliness 52) as Combination", () => {
+    expect(deriveSkinType(analysis({ hydration: 48, oiliness: 52 }))).toBe("Combination");
   });
 
-  it("adds a Dehydrated modifier from hydration, without forcing baseType to Dry", () => {
-    // Oily base (low oiliness) that also happens to be dehydrated — matches
-    // the "Oily · Dehydrated" example from the spec.
-    const result = deriveSkinType(analysis({ oiliness: 20, hydration: 40, redness: 80 }));
-    expect(result.baseType).toBe("Oily");
-    expect(result.modifiers).toContain("Dehydrated");
-    expect(result.label).toBe("Oily · Dehydrated");
+  it("does not classify mid-range 'not technically low' hydration as Balanced", () => {
+    // Old permissive rule would have called this Balanced (hydration > 45,
+    // oiliness >= 70). Balanced now requires hydration to be genuinely HIGH.
+    expect(deriveSkinType(analysis({ hydration: 46, oiliness: 80 }))).toBe("Combination");
   });
 
-  it("adds a Reactive modifier from redness independently of base type", () => {
-    const result = deriveSkinType(analysis({ oiliness: 50, hydration: 60, redness: 20 }));
-    expect(result.modifiers).toContain("Reactive");
-    expect(result.label).toBe("Balanced · Reactive");
+  it("classifies high oiliness score + mid-range hydration as Combination, not Dry", () => {
+    // Not low enough hydration to be Dry, not high enough to be Balanced.
+    expect(deriveSkinType(analysis({ hydration: 60, oiliness: 80 }))).toBe("Combination");
   });
 
-  it("has no modifiers and a plain label when nothing is out of range", () => {
-    const result = deriveSkinType(analysis({ oiliness: 80, hydration: 80, redness: 80 }));
-    expect(result.modifiers).toEqual([]);
-    expect(result.label).toBe("Balanced");
+  it("only ever returns one of the four allowed skin types — no condition words", () => {
+    const result = deriveSkinType(analysis({ oiliness: 20, hydration: 40, redness: 20 }));
+    expect(["Dry", "Combination", "Oily", "Balanced"]).toContain(result);
   });
 
-  it("does not use acne, pores, ageSpots, or texture in the classification", () => {
+  it("does not use acne, pores, ageSpots, texture, or redness in the classification", () => {
     const base = analysis({ oiliness: 50, hydration: 60, redness: 80 });
-    const changed = { ...base, acne: 1, pores: 1, ageSpots: 1, texture: 1 };
+    const changed = { ...base, acne: 1, pores: 1, ageSpots: 1, texture: 1, redness: 1 };
     expect(deriveSkinType(base)).toEqual(deriveSkinType(changed));
   });
 });

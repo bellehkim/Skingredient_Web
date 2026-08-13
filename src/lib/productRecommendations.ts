@@ -1,0 +1,67 @@
+import type { CatalogProduct } from "./data/catalog";
+import { CONCERN_INGREDIENT_CATEGORIES, concernPhrase, deriveSkinConcerns } from "./skinConcerns";
+import { CATEGORY_COLORS } from "./productMatching";
+import type { Product, SkinAnalysisResult } from "./types";
+
+const MAX_RECOMMENDATIONS = 5;
+
+function buildReason(matchedConcerns: string[]): string {
+  const phrases = matchedConcerns.map(concernPhrase);
+  const joined =
+    phrases.length <= 1
+      ? phrases[0]
+      : `${phrases.slice(0, -1).join(", ")} and ${phrases[phrases.length - 1]}`;
+  return `Recommended because your skin currently shows ${joined}.`;
+}
+
+/**
+ * Skin concern → ingredient category → matching catalog products, per
+ * Skingredient_MVP_Implementation_Guide.md Section 6. Simple match-count
+ * sort only — no ranking engine. Products with zero matching ingredients
+ * are dropped entirely.
+ */
+export function getTodaysRecommendations(
+  catalog: CatalogProduct[],
+  analysis: SkinAnalysisResult,
+): Product[] {
+  const concerns = deriveSkinConcerns(analysis);
+  const targetCategories = new Set(concerns.flatMap((c) => CONCERN_INGREDIENT_CATEGORIES[c] ?? []));
+  if (targetCategories.size === 0) return [];
+
+  const matched = catalog
+    .map((product) => {
+      const matchedCategories = new Set<string>();
+      const matchedIngredientNames: string[] = [];
+
+      for (const { ingredients } of product.product_ingredients) {
+        const categories = ingredients.ingredient_functions.map((f) => f.functional_category);
+        const hitCategories = categories.filter((c) => targetCategories.has(c));
+        if (hitCategories.length > 0) {
+          hitCategories.forEach((c) => matchedCategories.add(c));
+          matchedIngredientNames.push(ingredients.inci_name);
+        }
+      }
+
+      return { product, matchedCategories, matchedIngredientNames };
+    })
+    .filter((m) => m.matchedCategories.size > 0)
+    .sort((a, b) => b.matchedCategories.size - a.matchedCategories.size)
+    .slice(0, MAX_RECOMMENDATIONS);
+
+  return matched.map(({ product, matchedCategories, matchedIngredientNames }) => {
+    const matchedConcerns = concerns.filter((c) =>
+      (CONCERN_INGREDIENT_CATEGORIES[c] ?? []).some((cat) => matchedCategories.has(cat)),
+    );
+
+    return {
+      id: String(product.product_id),
+      brand: product.brand,
+      name: product.product_name,
+      category: product.category,
+      status: "use-today",
+      keyIngredients: matchedIngredientNames.slice(0, 3),
+      reason: buildReason(matchedConcerns),
+      imageColor: CATEGORY_COLORS[product.category] ?? "#F3F0FF",
+    };
+  });
+}

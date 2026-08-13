@@ -14,6 +14,7 @@ import {
   removeCustomProduct,
 } from "./data/customProducts";
 import { buildProductsFromCatalog } from "./productMatching";
+import { getTodaysRecommendations } from "./productRecommendations";
 import { getProfile, setOnboardingCompleted } from "./data/profile";
 import type {
   DailyRecommendation,
@@ -32,6 +33,10 @@ interface AppState {
   /** Full catalog, annotated with today's status — for display only. Saving
    * is what puts a product on the shelf; this list on its own never does. */
   recommendedProducts: Product[];
+  /** 3-5 catalog products matched against today's skin concerns
+   * (src/lib/productRecommendations.ts) — the "Recommended for you" cards.
+   * Display only; saving is a separate explicit action. */
+  todaysPicks: Product[];
   /** Only products the user has explicitly saved (shelf_items) — never the
    * catalog itself. */
   products: Product[];
@@ -152,6 +157,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     );
   }, [catalog, recommendation, statusOverrides]);
 
+  const todaysPicks = useMemo(
+    () => getTodaysRecommendations(catalog, analysis),
+    [catalog, analysis],
+  );
+
   // The shelf is recommendedProducts filtered down to explicitly saved
   // product IDs (shelf_items), plus the user's manually-added custom
   // products — never the catalog itself.
@@ -165,6 +175,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     analysis,
     event,
     recommendedProducts,
+    todaysPicks,
     products,
     symptoms,
     recommendation,

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/results")({
 });
 
 function Results() {
-  const { analysis, recommendation, recommendedProducts, products, addToShelf } = useAppStore();
+  const { analysis, recommendation, todaysPicks, products, addToShelf } = useAppStore();
   const {
     score,
     label: conditionLabel,
@@ -23,7 +23,6 @@ function Results() {
   } = deriveOverallCondition(analysis);
   const skinType = deriveSkinType(analysis);
   const shelfIds = new Set(products.map((p) => p.id));
-  const recommendedPicks = recommendedProducts.filter((p) => p.status === "use-today").slice(0, 4);
 
   return (
     <AppShell title="Your Results" back="/scan">
@@ -47,7 +46,7 @@ function Results() {
                 <p className="mt-3 text-[10px] font-bold tracking-[0.14em] text-ink/50">
                   SKIN TYPE
                 </p>
-                <p className="text-[13px] font-semibold text-ink/80">{skinType.label}</p>
+                <p className="text-[13px] font-semibold text-ink/80">{skinType}</p>
                 <p className="mt-2 max-w-[190px] text-[13px] leading-relaxed text-ink/80">
                   {conditionDescription}
                 </p>
@@ -145,13 +144,14 @@ function Results() {
           </section>
         </div>
 
-        {/* Recommended products — from the catalog, matched to today's plan.
-            Display only: nothing here is on My Shelf until explicitly saved. */}
-        {recommendedPicks.length > 0 && (
+        {/* Recommended products — from the catalog, matched to today's skin
+            concerns (src/lib/productRecommendations.ts). Display only:
+            nothing here is on My Shelf until explicitly saved. */}
+        {todaysPicks.length > 0 && (
           <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft">
             <h3 className="text-[15px] font-semibold text-ink">Recommended for you</h3>
             <div className="mt-3 space-y-2">
-              {recommendedPicks.map((p) => {
+              {todaysPicks.map((p) => {
                 const saved = shelfIds.has(p.id);
                 return (
                   <div
@@ -159,9 +159,16 @@ function Results() {
                     className="flex items-center justify-between gap-3 rounded-2xl border border-hairline p-3"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-[13px] text-ink-muted">{p.brand}</p>
+                      <p className="truncate text-[13px] text-ink-muted">
+                        {p.brand} · {p.category}
+                      </p>
                       <p className="truncate text-[14px] font-semibold text-ink">{p.name}</p>
                       <p className="mt-0.5 text-[12px] text-ink-muted">{p.reason}</p>
+                      {p.keyIngredients.length > 0 && (
+                        <p className="mt-1 text-[11.5px] font-medium text-ink">
+                          Contains: {p.keyIngredients.join(", ")}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => addToShelf(p.id)}

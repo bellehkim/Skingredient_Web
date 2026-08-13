@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AreaChart,
   Area,
@@ -11,8 +11,34 @@ import {
 } from "recharts";
 import { Flame, Calendar } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
-import { mockRednessTrend } from "@/data/mockData";
 import { getMetricLabel } from "@/lib/metricStatus";
+import { getAnalysisHistory } from "@/lib/data/analyses";
+import { deriveOverallCondition } from "@/lib/overallCondition";
+import { deriveSkinType } from "@/lib/skinType";
+import { METRIC_COLORS } from "@/lib/metricColors";
+import type { SkinAnalysisResult } from "@/lib/types";
+
+const HISTORY_LIST_LIMIT = 5;
+const TREND_WINDOW_DAYS = 7;
+
+// One config entry per selectable trend metric — the chart component itself
+// stays generic and just reads whichever entry is selected, rather than
+// having separate chart markup per metric.
+type TrendMetricKey =
+  "redness" | "hydration" | "oiliness" | "acne" | "pores" | "texture" | "ageSpots";
+
+const TREND_METRICS: Record<
+  TrendMetricKey,
+  { label: string; color: string; accessor: (a: SkinAnalysisResult) => number }
+> = {
+  redness: { label: "Redness", color: METRIC_COLORS.redness, accessor: (a) => a.redness },
+  hydration: { label: "Hydration", color: METRIC_COLORS.hydration, accessor: (a) => a.hydration },
+  oiliness: { label: "Oiliness", color: METRIC_COLORS.oiliness, accessor: (a) => a.oiliness },
+  acne: { label: "Acne", color: METRIC_COLORS.acne, accessor: (a) => a.acne },
+  pores: { label: "Pores", color: METRIC_COLORS.pores, accessor: (a) => a.pores },
+  texture: { label: "Texture", color: METRIC_COLORS.texture, accessor: (a) => a.texture },
+  ageSpots: { label: "Dark Spots", color: METRIC_COLORS.ageSpots, accessor: (a) => a.ageSpots },
+};
 
 export const Route = createFileRoute("/insights")({
   head: () => ({ meta: [{ title: "Insights — Skingredient" }] }),
@@ -21,6 +47,59 @@ export const Route = createFileRoute("/insights")({
 
 function Insights() {
   const [tab, setTab] = useState<"trend" | "history">("trend");
+  const [history, setHistory] = useState<SkinAnalysisResult[] | null>(null);
+  const [selectedMetric, setSelectedMetric] = useState<TrendMetricKey>("redness");
+
+  // Read-only: getAnalysisHistory() only selects already-saved skin_analyses
+  // rows — it never calls YouCam/Claude. Fetched once on mount, not
+  // re-triggered by opening/reopening an older analysis. Fetches more than
+  // the History tab displays so the trend chart's "Last 7 Days" filter below
+  // has enough rows to actually filter from, rather than just being capped
+  // at whatever the History list shows.
+  useEffect(() => {
+    getAnalysisHistory()
+      .then(setHistory)
+      .catch((err) => {
+        console.error("Failed to load analysis history", err);
+        setHistory([]);
+      });
+  }, []);
+
+  const metric = TREND_METRICS[selectedMetric];
+
+  // Current Snapshot cards: the 3 lowest-scoring (most concerning) metrics
+  // from the latest analysis — history[0], since getAnalysisHistory() is
+  // already newest-first. Reuses TREND_METRICS for label/color (no new
+  // config) and the existing Metric card component unchanged; bg is just
+  // the same color at low opacity via a hex alpha suffix, not a new palette.
+  const snapshotMetrics = useMemo(() => {
+    const latest = history && history.length > 0 ? history[0] : null;
+    if (!latest) return [];
+    return (Object.keys(TREND_METRICS) as TrendMetricKey[])
+      .map((key) => ({ key, ...TREND_METRICS[key], value: TREND_METRICS[key].accessor(latest) }))
+      .sort((a, b) => a.value - b.value)
+      .slice(0, 3);
+  }, [history]);
+
+  // Real analysis history, filtered to the last 7 calendar days (matching
+  // the "Last 7 Days" badge) — not just "the N most recent scans", which
+  // could span any length of time. Oldest first so the chart reads
+  // left-to-right chronologically.
+  const chartData = useMemo(() => {
+    if (!history) return null;
+    const cutoff = Date.now() - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    return history
+      .filter((a) => new Date(a.analyzedAt).getTime() >= cutoff)
+      .slice()
+      .reverse()
+      .map((a) => ({
+        day: new Date(a.analyzedAt).toLocaleDateString(undefined, {
+          month: "numeric",
+          day: "numeric",
+        }),
+        value: metric.accessor(a),
+      }));
+  }, [history, metric]);
 
   return (
     <AppShell
@@ -53,93 +132,170 @@ function Insights() {
           ))}
         </div>
 
-        <div className="mt-4 grid items-start gap-4 lg:grid-cols-[2fr_1fr]">
-          <section className="rounded-3xl border border-hairline bg-white p-4 shadow-soft lg:p-6">
-            <div className="flex items-center justify-between">
-              <p className="text-[16px] font-semibold text-ink">Redness</p>
-              <span className="rounded-full bg-surface-muted px-2 py-1 text-[11px] font-medium text-ink-muted">
-                7 days
-              </span>
-            </div>
-            <div className="mt-3 h-48 lg:h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart
-                  data={mockRednessTrend}
-                  margin={{ top: 10, right: 6, left: -20, bottom: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="rd" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FF626A" stopOpacity="0.35" />
-                      <stop offset="100%" stopColor="#FF626A" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="#F0F2F7" vertical={false} />
-                  <XAxis
-                    dataKey="day"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: "#667085", fontSize: 11 }}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: "#667085", fontSize: 11 }}
-                  />
-                  <Tooltip
-                    cursor={{ stroke: "#e8ecf2" }}
-                    contentStyle={{ borderRadius: 12, border: "1px solid #e8ecf2", fontSize: 12 }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#FF626A"
-                    strokeWidth={2.5}
-                    fill="url(#rd)"
-                    dot={{ r: 3, fill: "#FF626A" }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
+        {tab === "trend" && (
+          <>
+            <div className="mt-4 grid items-start gap-4 lg:grid-cols-[2fr_1fr]">
+              <section className="rounded-3xl border border-hairline bg-white p-4 shadow-soft lg:p-6">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="trend-metric" className="text-[11px] font-medium text-ink-muted">
+                    Metric
+                  </label>
+                  <select
+                    id="trend-metric"
+                    value={selectedMetric}
+                    onChange={(e) => setSelectedMetric(e.target.value as TrendMetricKey)}
+                    className="rounded-full border border-hairline bg-white px-3 py-1 text-[13px] font-semibold text-ink"
+                  >
+                    {Object.entries(TREND_METRICS).map(([key, m]) => (
+                      <option key={key} value={key}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-          <div className="grid grid-cols-3 gap-2 lg:grid-cols-1 lg:gap-3">
-            <Metric
-              name="Hydration"
-              value={48}
-              label={getMetricLabel(48)}
-              ring="#2798F2"
-              bg="#EAF6FF"
-            />
-            <Metric name="Acne" value={68} label={getMetricLabel(68)} ring="#45B887" bg="#E8F8F1" />
-            <Metric
-              name="Oiliness"
-              value={48}
-              label={getMetricLabel(48)}
-              ring="#F5B82E"
-              bg="#FFF7D8"
-            />
-          </div>
-        </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-[16px] font-semibold text-ink">{metric.label}</p>
+                  <span className="rounded-full bg-surface-muted px-2 py-1 text-[11px] font-medium text-ink-muted">
+                    Last 7 Days
+                  </span>
+                </div>
 
-        <section
-          className="relative mt-4 overflow-hidden rounded-3xl p-5 lg:p-7"
-          style={{ background: "linear-gradient(120deg, #EEEAFE 0%, #F6F3FF 100%)" }}
-        >
-          <div className="absolute -right-6 -bottom-6 h-32 w-32 rounded-full bg-white/50 blur-2xl" />
-          <p className="text-[15px] font-semibold text-ink">This week's summary 🎉</p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
-            Redness is improving. Keep focusing on barrier care and hydration.
-          </p>
-          <Link
-            to="/insights"
-            className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-brand"
-          >
-            <Calendar size={13} /> Compare with last week
-          </Link>
-        </section>
+                {chartData === null ? (
+                  <p className="mt-8 text-center text-[13px] text-ink-muted">Loading…</p>
+                ) : chartData.length < 2 ? (
+                  <p className="mt-8 text-center text-[13px] text-ink-muted">
+                    More analyses are needed to show meaningful trends.
+                  </p>
+                ) : (
+                  <div className="mt-3 h-48 lg:h-[320px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart
+                        data={chartData ?? []}
+                        margin={{ top: 10, right: 6, left: -20, bottom: 0 }}
+                      >
+                        <defs>
+                          <linearGradient id="trend-gradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={metric.color} stopOpacity="0.35" />
+                            <stop offset="100%" stopColor={metric.color} stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid stroke="#F0F2F7" vertical={false} />
+                        <XAxis
+                          dataKey="day"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: "#667085", fontSize: 11 }}
+                        />
+                        <YAxis
+                          domain={[0, 100]}
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: "#667085", fontSize: 11 }}
+                        />
+                        <Tooltip
+                          cursor={{ stroke: "#e8ecf2" }}
+                          contentStyle={{
+                            borderRadius: 12,
+                            border: "1px solid #e8ecf2",
+                            fontSize: 12,
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="value"
+                          stroke={metric.color}
+                          strokeWidth={2.5}
+                          fill="url(#trend-gradient)"
+                          dot={{ r: 3, fill: metric.color }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </section>
+
+              {snapshotMetrics.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 lg:grid-cols-1 lg:gap-3">
+                  {snapshotMetrics.map((m) => (
+                    <Metric
+                      key={m.key}
+                      name={m.label}
+                      value={m.value}
+                      label={getMetricLabel(m.value)}
+                      ring={m.color}
+                      bg={`${m.color}22`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <section
+              className="relative mt-4 overflow-hidden rounded-3xl p-5 lg:p-7"
+              style={{ background: "linear-gradient(120deg, #EEEAFE 0%, #F6F3FF 100%)" }}
+            >
+              <div className="absolute -right-6 -bottom-6 h-32 w-32 rounded-full bg-white/50 blur-2xl" />
+              <p className="text-[15px] font-semibold text-ink">This week's summary 🎉</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
+                Redness is improving. Keep focusing on barrier care and hydration.
+              </p>
+              <Link
+                to="/insights"
+                className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-brand"
+              >
+                <Calendar size={13} /> Compare with last week
+              </Link>
+            </section>
+          </>
+        )}
+
+        {tab === "history" && (
+          <HistoryList analyses={history ? history.slice(0, HISTORY_LIST_LIMIT) : null} />
+        )}
       </PageContainer>
     </AppShell>
+  );
+}
+
+function HistoryList({ analyses }: { analyses: SkinAnalysisResult[] | null }) {
+  if (analyses === null) {
+    return <p className="mt-6 text-center text-[13px] text-ink-muted">Loading…</p>;
+  }
+
+  if (analyses.length === 0) {
+    return <p className="mt-6 text-center text-[13px] text-ink-muted">No skin analyses yet.</p>;
+  }
+
+  return (
+    <div className="mt-4 space-y-2">
+      {analyses.map((a) => {
+        const { score, label } = deriveOverallCondition(a);
+        const skinType = deriveSkinType(a);
+        const date = new Date(a.analyzedAt).toLocaleString(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        });
+        return (
+          <Link
+            key={a.id}
+            to="/history/$analysisId"
+            params={{ analysisId: a.id! }}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-hairline bg-white p-4 shadow-soft"
+          >
+            <div className="min-w-0">
+              <p className="text-[12px] text-ink-muted">{date}</p>
+              <p className="mt-0.5 text-[14.5px] font-semibold text-ink">{label}</p>
+              <p className="mt-0.5 text-[12.5px] text-ink-muted">Skin type: {skinType}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-[20px] font-bold text-ink">{score}</div>
+              <div className="text-[10px] font-medium text-ink-muted">/100</div>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 

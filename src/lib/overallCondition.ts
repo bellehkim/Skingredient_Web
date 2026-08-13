@@ -15,11 +15,28 @@ const WEIGHTS = {
   ageSpots: 0.1,
 } as const;
 
-const CONDITION_LABEL: Record<ReturnType<typeof getMetricLabel>, string> = {
-  "Needs Attention": "Reactive",
-  Moderate: "Uneven",
-  Good: "Balanced",
-};
+// Overall Condition describes today's state, not a skin type — so labels are
+// health-state words (Excellent/Healthy/.../Compromised), not per-concern
+// nouns like "Blemish-Prone" or "Oil-Prone" (those read as permanent traits,
+// which belongs to deriveSkinType() instead, see src/lib/skinType.ts).
+// Bands are purely score-based except one deliberate exception: notably high
+// redness ("Needs Attention" tier, via the existing unchanged
+// metricStatus.ts scale) always reads as "Reactive" regardless of overall
+// score, since reactive/irritated skin is a distinct, actionable state worth
+// calling out on its own.
+const EXCELLENT_LOWER_BOUND = 85;
+const HEALTHY_LOWER_BOUND = 70;
+const BALANCED_LOWER_BOUND = 55;
+const NEEDS_SUPPORT_LOWER_BOUND = 40;
+
+function conditionLabel(score: number, redness: number): string {
+  if (getMetricLabel(redness) === "Needs Attention") return "Reactive";
+  if (score >= EXCELLENT_LOWER_BOUND) return "Excellent";
+  if (score >= HEALTHY_LOWER_BOUND) return "Healthy";
+  if (score >= BALANCED_LOWER_BOUND) return "Balanced";
+  if (score >= NEEDS_SUPPORT_LOWER_BOUND) return "Needs Support";
+  return "Compromised";
+}
 
 const METRIC_DISPLAY_NAME: Record<keyof typeof WEIGHTS, string> = {
   hydration: "hydration",
@@ -57,11 +74,10 @@ export function deriveOverallCondition(analysis: SkinAnalysisResult): OverallCon
       )
     : 0;
 
-  const label = CONDITION_LABEL[getMetricLabel(score)];
-
   const dominantConcern = presentKeys.reduce((worst, key) =>
     analysis[key] < analysis[worst] ? key : worst,
   );
+  const label = conditionLabel(score, analysis.redness);
   const description = `Pay attention to ${METRIC_DISPLAY_NAME[dominantConcern]} and strengthen your barrier.`;
 
   return { score, label, description };
