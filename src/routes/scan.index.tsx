@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { HelpCircle, Zap, Image as ImageIcon } from "lucide-react";
+import { HelpCircle, Image as ImageIcon } from "lucide-react";
 import { AppShell } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { skinAnalysisService, ANALYSIS_STEPS } from "@/lib/skinAnalysisService";
@@ -144,12 +144,15 @@ function Scan() {
   // which is what caused YouCam's error_src_face_too_small.
   const FRAME_ASPECT = 3 / 4;
 
+  // Capture-only: never falls back to the file picker on failure (missing
+  // camera, canvas, or blob) — that's a distinct, explicit user choice via
+  // the Upload photo button/icon, not something this button should trigger
+  // as a surprise side effect. cameraError already covers user feedback for
+  // the no-camera case via the instruction pill.
   const capturePhoto = () => {
     const video = videoRef.current;
-    if (!video || !cameraReady || !video.videoWidth) {
-      openPicker();
-      return;
-    }
+    if (!video || !cameraReady || !video.videoWidth) return;
+
     const sourceAspect = video.videoWidth / video.videoHeight;
     let sx = 0;
     let sy = 0;
@@ -166,15 +169,12 @@ function Scan() {
     canvas.width = sw;
     canvas.height = sh;
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      openPicker();
-      return;
-    }
+    if (!ctx) return;
+
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
     canvas.toBlob(
       (blob) => {
         if (blob) start(blob);
-        else openPicker();
       },
       "image/jpeg",
       0.92,
@@ -266,12 +266,7 @@ function Scan() {
                     className={`h-14 w-14 rounded-full ${scanning ? "animate-pulse bg-sage" : "bg-white"}`}
                   />
                 </button>
-                <button
-                  aria-label="Flash"
-                  className="grid h-11 w-11 place-items-center rounded-full bg-white/90 text-ink"
-                >
-                  <Zap size={18} />
-                </button>
+                <div className="h-11 w-11" />
               </div>
             </div>
           </div>
@@ -299,17 +294,7 @@ function Scan() {
                 </li>
               ))}
             </ul>
-            {(error || cameraError) && (
-              <p className="mt-4 text-[13px] font-medium text-coral">{error ?? cameraError}</p>
-            )}
             <div className="mt-6 flex flex-wrap gap-2">
-              <button
-                onClick={capturePhoto}
-                disabled={scanning}
-                className="rounded-2xl bg-brand px-6 py-3 text-[14px] font-semibold text-white disabled:opacity-70"
-              >
-                {scanning ? "Analyzing…" : error ? "Try again" : "Use camera"}
-              </button>
               <button
                 onClick={openPicker}
                 disabled={scanning}
