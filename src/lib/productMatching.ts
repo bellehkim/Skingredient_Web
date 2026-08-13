@@ -58,7 +58,17 @@ export function labelsToCategories(labels: string[]): Set<string> {
   return new Set(categories);
 }
 
-function categoryDisplayName(category: string): string {
+/** Single-label version of labelsToCategories — exported for
+ * src/lib/recommendationEngine.ts, which needs to test one prioritized/
+ * avoided label at a time against a reported-irritating category. */
+export function categoryForLabel(label: string): string | undefined {
+  return INGREDIENT_LABEL_TO_CATEGORY[label.toLowerCase()];
+}
+
+/** Exported for reuse by src/lib/recommendationEngine.ts, which needs to
+ * turn a reported-irritating functional_category back into the same
+ * English label vocabulary "Avoid Today" already uses. */
+export function categoryDisplayName(category: string): string {
   const [label] = Object.entries(INGREDIENT_LABEL_TO_CATEGORY).find(([, c]) => c === category) ?? [
     category,
   ];
