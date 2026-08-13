@@ -13,27 +13,69 @@ const STEPS = [
   {
     title: "What are your main skin concerns?",
     subtitle: "Select up to 5.",
-    options: ["Acne / Breakouts", "Acne scars", "Dark spots", "Redness", "Uneven skin tone", "Dryness", "Dehydration", "Excess oil", "Large pores", "Blackheads", "Fine lines", "Dull skin", "Sensitive skin", "Rough texture", "Damaged barrier"],
+    options: [
+      "Acne / Breakouts",
+      "Acne scars",
+      "Dark spots",
+      "Redness",
+      "Uneven skin tone",
+      "Dryness",
+      "Dehydration",
+      "Excess oil",
+      "Large pores",
+      "Blackheads",
+      "Fine lines",
+      "Dull skin",
+      "Sensitive skin",
+      "Rough texture",
+      "Damaged barrier",
+    ],
   },
   {
     title: "How sensitive is your skin?",
     subtitle: "Pick the closest match.",
     options: ["Not sensitive", "Slightly sensitive", "Moderately sensitive", "Very sensitive"],
+    multi: false,
   },
   {
     title: "Ingredient sensitivities?",
     subtitle: "Select any that apply.",
-    options: ["Fragrance", "Essential oils", "Alcohol", "Aloe", "Lanolin", "Propolis", "Tea tree", "Benzoyl peroxide", "Salicylic acid", "Retinoids", "Vitamin C", "None known"],
+    options: [
+      "Fragrance",
+      "Essential oils",
+      "Alcohol",
+      "Aloe",
+      "Lanolin",
+      "Propolis",
+      "Tea tree",
+      "Benzoyl peroxide",
+      "Salicylic acid",
+      "Retinoids",
+      "Vitamin C",
+      "None known",
+    ],
   },
   {
     title: "What are your skincare goals?",
     subtitle: "Select up to 5.",
-    options: ["Clear acne", "Reduce redness", "Repair skin barrier", "Hydrate skin", "Reduce oiliness", "Improve texture", "Brighten skin", "Build a simple routine", "Avoid irritation", "Prepare for an event"],
+    options: [
+      "Clear acne",
+      "Reduce redness",
+      "Repair skin barrier",
+      "Hydrate skin",
+      "Reduce oiliness",
+      "Improve texture",
+      "Brighten skin",
+      "Build a simple routine",
+      "Avoid irritation",
+      "Prepare for an event",
+    ],
   },
   {
     title: "Do you have an important event coming up?",
     subtitle: "We'll adjust today's plan.",
     options: ["No", "Tomorrow", "Within 3 days", "Within a week"],
+    multi: false,
   },
 ];
 
@@ -46,17 +88,28 @@ function Onboarding() {
   const cur = STEPS[step];
   const toggle = (v: string) => {
     const a = [...answers];
-    a[step] = a[step].includes(v) ? a[step].filter((x) => x !== v) : [...a[step], v];
+    a[step] =
+      cur.multi === false
+        ? [v]
+        : a[step].includes(v)
+          ? a[step].filter((x) => x !== v)
+          : [...a[step], v];
     setAnswers(a);
   };
   const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
     <AppShell hideNav>
-      <MobileHeader title={`Step ${step + 1} of ${STEPS.length}`} back={step === 0 ? "/welcome" : "/onboarding"} />
+      <MobileHeader
+        title={`Step ${step + 1} of ${STEPS.length}`}
+        back={step === 0 ? "/welcome" : "/onboarding"}
+      />
       <div className="px-5 lg:mx-auto lg:max-w-[760px] lg:px-10 lg:pt-8">
         <div className="h-1 w-full overflow-hidden rounded-full bg-surface-muted">
-          <div className="h-full rounded-full bg-brand transition-all" style={{ width: `${progress}%` }} />
+          <div
+            className="h-full rounded-full bg-brand transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       </div>
       <PageContainer width="narrow" className="pb-32">
@@ -78,7 +131,9 @@ function Onboarding() {
             );
           })}
         </div>
-        <p className="mt-6 text-[11px] text-ink-muted">Skingredient does not diagnose medical conditions.</p>
+        <p className="mt-6 text-[11px] text-ink-muted">
+          Skingredient does not diagnose medical conditions.
+        </p>
       </PageContainer>
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-hairline bg-white px-5 py-4">
         <button

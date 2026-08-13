@@ -192,9 +192,18 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     return [...recommendedProducts.filter((p) => shelfIdSet.has(p.id)), ...customProducts];
   }, [recommendedProducts, shelfProductIds, customProducts]);
 
+  // Real, persisted analyses always have an id (src/lib/types.ts); mockAnalysis
+  // — the initial/fallback state until a scan is saved — never does. Routine's
+  // catalog-recommendation fallback is gated on this so a brand-new/just-reset
+  // user (no real scan yet) sees an empty routine instead of one silently
+  // populated from mock analysis data. Shelf-owned products are unaffected —
+  // saving to Shelf is a real user action regardless of scan status.
+  const hasRealAnalysis = Boolean(analysis.id);
+
   const routine = useMemo(
-    () => composeRoutine(catalog, products, recommendedProducts, recommendation),
-    [catalog, products, recommendedProducts, recommendation],
+    () =>
+      composeRoutine(catalog, products, hasRealAnalysis ? recommendedProducts : [], recommendation),
+    [catalog, products, recommendedProducts, recommendation, hasRealAnalysis],
   );
 
   const value: AppState = {

@@ -1,9 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/appStore";
 import type { RoutineSlot } from "@/lib/routineComposer";
 import { Sun, Moon, Lightbulb } from "lucide-react";
+
+const PLANNED_FEATURES = [
+  "Swap products based on your preferences",
+  "Prioritize products you already own on your Shelf",
+  "Personalize your AI-generated routine while keeping the same skincare goals",
+];
 
 export const Route = createFileRoute("/routine")({
   head: () => ({ meta: [{ title: "Routine Planner — Skingredient" }] }),
@@ -27,6 +42,7 @@ function Routine() {
     month: "long",
     day: "numeric",
   });
+  const [showCustomizeInfo, setShowCustomizeInfo] = useState(false);
 
   return (
     <AppShell title="Routine Planner">
@@ -70,10 +86,40 @@ function Routine() {
           <p className="text-[13px] text-ink">{recommendation.explanation}</p>
         </div>
 
-        <button className="mt-5 w-full rounded-2xl bg-[#9d86fc] py-3.5 text-[14px] font-semibold text-white lg:w-auto lg:px-8">
+        <button
+          onClick={() => setShowCustomizeInfo(true)}
+          className="mt-5 w-full rounded-2xl bg-[#9d86fc] py-3.5 text-[14px] font-semibold text-white lg:w-auto lg:px-8"
+        >
           Adjust today's routine
         </button>
       </PageContainer>
+
+      <Dialog open={showCustomizeInfo} onOpenChange={setShowCustomizeInfo}>
+        <DialogContent className="max-w-[380px] rounded-3xl border border-hairline bg-white p-6 shadow-lift">
+          <DialogHeader>
+            <DialogTitle className="text-[17px] font-bold text-ink">
+              Routine Customization
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-[13.5px] text-ink-muted">Routine customization is coming soon.</p>
+          <p className="text-[13.5px] font-semibold text-ink">You'll be able to:</p>
+          <ul className="space-y-1.5">
+            {PLANNED_FEATURES.map((feature) => (
+              <li key={feature} className="flex gap-2 text-[13.5px] text-ink-muted">
+                <span className="text-brand">•</span>
+                {feature}
+              </li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <DialogClose asChild>
+              <button className="w-full rounded-2xl bg-brand py-3 text-[14px] font-semibold text-white sm:w-auto sm:px-8">
+                Close
+              </button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
