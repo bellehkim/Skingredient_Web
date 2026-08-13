@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { Flame, Calendar } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
-import { getMetricLabel } from "@/lib/metricStatus";
+import { getMetricStatusText } from "@/lib/metricStatus";
 import { getAnalysisHistory } from "@/lib/data/analyses";
 import { deriveOverallCondition } from "@/lib/overallCondition";
 import { deriveSkinType } from "@/lib/skinType";
@@ -222,7 +222,7 @@ function Insights() {
                       key={m.key}
                       name={m.label}
                       value={m.value}
-                      label={getMetricLabel(m.value)}
+                      label={getMetricStatusText(m.key, m.value)}
                       ring={m.color}
                       bg={`${m.color}22`}
                     />

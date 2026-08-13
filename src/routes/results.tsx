@@ -4,7 +4,7 @@ import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
 import { useAppStore } from "@/lib/appStore";
-import { getMetricLabel } from "@/lib/metricStatus";
+import { getMetricStatusText } from "@/lib/metricStatus";
 import { deriveOverallCondition } from "@/lib/overallCondition";
 import { deriveSkinType } from "@/lib/skinType";
 import { METRIC_COLORS } from "@/lib/metricColors";
@@ -60,49 +60,49 @@ function Results() {
             <MetricBar
               name="Redness"
               value={analysis.redness}
-              label={getMetricLabel(analysis.redness)}
+              label={getMetricStatusText("redness", analysis.redness)}
               color={METRIC_COLORS.redness}
             />
             <div className="border-t border-hairline" />
             <MetricBar
               name="Hydration"
               value={analysis.hydration}
-              label={getMetricLabel(analysis.hydration)}
+              label={getMetricStatusText("hydration", analysis.hydration)}
               color={METRIC_COLORS.hydration}
             />
             <div className="border-t border-hairline" />
             <MetricBar
               name="Oiliness"
               value={analysis.oiliness}
-              label={getMetricLabel(analysis.oiliness)}
+              label={getMetricStatusText("oiliness", analysis.oiliness)}
               color={METRIC_COLORS.oiliness}
             />
             <div className="border-t border-hairline" />
             <MetricBar
               name="Acne"
               value={analysis.acne}
-              label={getMetricLabel(analysis.acne)}
+              label={getMetricStatusText("acne", analysis.acne)}
               color={METRIC_COLORS.acne}
             />
             <div className="border-t border-hairline" />
             <MetricBar
               name="Pores"
               value={analysis.pores}
-              label={getMetricLabel(analysis.pores)}
+              label={getMetricStatusText("pores", analysis.pores)}
               color={METRIC_COLORS.pores}
             />
             <div className="border-t border-hairline" />
             <MetricBar
               name="Texture"
               value={analysis.texture}
-              label={getMetricLabel(analysis.texture)}
+              label={getMetricStatusText("texture", analysis.texture)}
               color={METRIC_COLORS.texture}
             />
             <div className="border-t border-hairline" />
             <MetricBar
               name="Dark Spots"
               value={analysis.ageSpots}
-              label={getMetricLabel(analysis.ageSpots)}
+              label={getMetricStatusText("ageSpots", analysis.ageSpots)}
               color={METRIC_COLORS.ageSpots}
             />
           </section>
