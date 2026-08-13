@@ -4,6 +4,7 @@ import { Search, ChevronRight } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { useAppStore } from "@/lib/appStore";
+import brandMark from "@/assets/brand-mark.png";
 
 export const Route = createFileRoute("/ingredients/")({
   head: () => ({ meta: [{ title: "Ingredient Explorer — Skingredient" }] }),
@@ -93,7 +94,9 @@ function Explorer() {
                     params={{ ingredientId: i.id }}
                     className="flex items-center gap-3 rounded-2xl border border-hairline bg-white p-3 shadow-soft"
                   >
-                    <div className="h-10 w-10 rounded-full bg-surface-muted" />
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-surface-muted">
+                      <img src={brandMark} alt="" className="h-[70%] w-[70%] object-contain" />
+                    </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[14.5px] font-semibold text-ink">{i.name}</p>
                       <p className="mt-0.5 truncate text-[12px] font-medium text-ink-muted">

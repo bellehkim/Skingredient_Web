@@ -22,7 +22,6 @@ function Welcome() {
 
         <PageContainer width="narrow" className="relative flex min-h-screen flex-col">
           <div className="mt-6 inline-flex items-center gap-2">
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-white font-bold">S</div>
             <span className="text-[15px] font-semibold text-ink">Skingredient</span>
           </div>
 
