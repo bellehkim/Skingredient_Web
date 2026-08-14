@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildPrompt, type SkinStrategyInput } from "./skinStrategyService";
+import {
+  buildPrompt,
+  sanitizeSkinStrategyText,
+  type SkinStrategyInput,
+} from "./skinStrategyService";
 
 function input(overrides: Partial<SkinStrategyInput> = {}): SkinStrategyInput {
   return {
@@ -14,7 +18,11 @@ function input(overrides: Partial<SkinStrategyInput> = {}): SkinStrategyInput {
     },
     overallCondition: { score: 75, label: "Healthy" },
     skinType: "Balanced",
-    concerns: [],
+    direction: "Healthy Maintenance",
+    explanation: "Your skin looks healthy today.",
+    prioritizedIngredients: [],
+    avoidedIngredients: [],
+    riskLevel: "low",
     scheduleTomorrow: "none",
     eventTiming: "none",
     shelfCategories: [],
@@ -50,13 +58,49 @@ describe("buildPrompt", () => {
     expect(prompt).toContain("Cleanser, Moisturizer");
   });
 
-  it("falls back to 'none' when there are no detected concerns", () => {
-    const prompt = buildPrompt(input({ concerns: [] }));
-    expect(prompt).toContain("none — skin is broadly balanced");
+  it("falls back to placeholder text when nothing is prioritized/avoided", () => {
+    const prompt = buildPrompt(input({ prioritizedIngredients: [], avoidedIngredients: [] }));
+    expect(prompt).toContain("Prioritize: nothing specific today.");
+    expect(prompt).toContain("Avoid: nothing specific today.");
   });
 
-  it("lists detected concerns when present", () => {
-    const prompt = buildPrompt(input({ concerns: ["Redness", "Low Hydration"] }));
-    expect(prompt).toContain("Redness, Low Hydration");
+  it("reflects the exact same plan Today's Plan shows — direction, prioritize, and avoid", () => {
+    const prompt = buildPrompt(
+      input({
+        direction: "Blemish Control",
+        prioritizedIngredients: ["Niacinamide", "Salicylic Acid"],
+        avoidedIngredients: ["Retinoids", "AHA"],
+      }),
+    );
+    expect(prompt).toContain("Direction: Blemish Control");
+    expect(prompt).toContain("Prioritize: Niacinamide, Salicylic Acid");
+    expect(prompt).toContain("Avoid: Retinoids, AHA");
+  });
+});
+
+describe("sanitizeSkinStrategyText", () => {
+  it("never leaves an em dash or en dash in the final text", () => {
+    const text =
+      "Focus on hydration today—your barrier needs support. Keep actives light–moderate for now.";
+    const sanitized = sanitizeSkinStrategyText(text);
+    expect(sanitized).not.toContain("—");
+    expect(sanitized).not.toContain("–");
+  });
+
+  it("replaces an em dash with a comma", () => {
+    expect(sanitizeSkinStrategyText("Keep it gentle—consistency matters most.")).toBe(
+      "Keep it gentle, consistency matters most.",
+    );
+  });
+
+  it("replaces an en dash with a plain hyphen", () => {
+    expect(sanitizeSkinStrategyText("Aim for a light–moderate routine today.")).toBe(
+      "Aim for a light-moderate routine today.",
+    );
+  });
+
+  it("leaves text with no dashes completely unchanged", () => {
+    const text = "Focus on hydration today, and keep your routine consistent.";
+    expect(sanitizeSkinStrategyText(text)).toBe(text);
   });
 });

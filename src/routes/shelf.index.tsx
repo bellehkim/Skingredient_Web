@@ -6,21 +6,23 @@ import { useAppStore } from "@/lib/appStore";
 import type { ProductStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/shelf/")({
-  head: () => ({ meta: [{ title: "My Shelf — Skingredient" }] }),
+  head: () => ({ meta: [{ title: "My shelf — Skingredient" }] }),
   component: Shelf,
 });
 
 const FILTERS: { label: string; value: "all" | ProductStatus }[] = [
   { label: "All", value: "all" },
-  { label: "Use Today", value: "use-today" },
+  { label: "Use today", value: "use-today" },
   { label: "Optional", value: "optional" },
-  { label: "Skip Today", value: "skip-today" },
+  { label: "Skip today", value: "skip-today" },
+  { label: "Reaction reported", value: "reaction-reported" },
 ];
 
 const STATUS_LINE: Record<ProductStatus, { text: string; cls: string }> = {
   "use-today": { text: "✓ Recommended today", cls: "text-sage" },
   optional: { text: "✓ Optional today", cls: "text-[#a1770b]" },
   "skip-today": { text: "⚠ Skip today", cls: "text-coral" },
+  "reaction-reported": { text: "⚠ Reaction reported", cls: "text-coral" },
 };
 
 function Shelf() {
@@ -30,7 +32,7 @@ function Shelf() {
 
   return (
     <AppShell
-      title="My Shelf"
+      title="My shelf"
       actions={
         <Link
           to="/shelf/add"
@@ -42,12 +44,19 @@ function Shelf() {
     >
       <PageContainer width="wide">
         <header className="flex items-center justify-between lg:hidden">
-          <h1 className="text-[26px] font-bold text-ink">My Shelf</h1>
+          <h1 className="text-[26px] font-bold text-ink">My shelf</h1>
           <div className="flex items-center gap-2">
-            <button aria-label="Search" className="grid h-10 w-10 place-items-center rounded-full bg-surface-muted">
+            <button
+              aria-label="Search"
+              className="grid h-10 w-10 place-items-center rounded-full bg-surface-muted"
+            >
               <Search size={18} className="text-ink" />
             </button>
-            <Link to="/shelf/add" aria-label="Add product" className="grid h-10 w-10 place-items-center rounded-full bg-brand text-white">
+            <Link
+              to="/shelf/add"
+              aria-label="Add product"
+              className="grid h-10 w-10 place-items-center rounded-full bg-brand text-white"
+            >
               <Plus size={18} />
             </Link>
           </div>
@@ -119,7 +128,9 @@ function Shelf() {
           {shown.length === 0 && (
             <div className="rounded-2xl border border-dashed border-hairline p-8 text-center lg:col-span-2">
               <p className="text-[14px] font-medium text-ink">No products in this filter</p>
-              <p className="mt-1 text-[12px] text-ink-muted">Try a different filter or add a new product.</p>
+              <p className="mt-1 text-[12px] text-ink-muted">
+                Try a different filter or add a new product.
+              </p>
             </div>
           )}
         </div>

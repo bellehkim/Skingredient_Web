@@ -107,3 +107,26 @@ export async function upsertIngredientReaction(
   );
   if (error) throw error;
 }
+
+/**
+ * Removes an ingredient sensitivity entirely (src/routes/profile.sensitivities.tsx)
+ * — a real delete, not just overwriting reaction_type, since "remove" means
+ * this ingredient no longer has any reported reaction at all.
+ */
+export async function removeIngredientReaction(inciName: string): Promise<void> {
+  const userId = await getCurrentUserId();
+
+  const { data: ingredient, error: lookupError } = await supabase
+    .from("ingredients")
+    .select("ingredient_id")
+    .eq("inci_name", inciName)
+    .single();
+  if (lookupError) throw lookupError;
+
+  const { error } = await supabase
+    .from("ingredient_reactions")
+    .delete()
+    .eq("user_id", userId)
+    .eq("ingredient_id", (ingredient as { ingredient_id: number }).ingredient_id);
+  if (error) throw error;
+}

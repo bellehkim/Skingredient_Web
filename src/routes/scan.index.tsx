@@ -7,13 +7,9 @@ import { MobileHeader } from "@/components/app/MobileHeader";
 import { skinAnalysisService, ANALYSIS_STEPS } from "@/lib/skinAnalysisService";
 import { useAppStore } from "@/lib/appStore";
 import { createAnalysis } from "@/lib/data/analyses";
-import { deriveOverallCondition } from "@/lib/overallCondition";
-import { deriveSkinType } from "@/lib/skinType";
-import { deriveSkinConcerns } from "@/lib/skinConcerns";
 import { generateRecommendation } from "@/lib/recommendationEngine";
+import { generateAndPersistSkinStrategy } from "@/lib/skinStrategyFlow";
 import { mockUser } from "@/data/mockData";
-import type { SkinStrategyInput } from "@/lib/skinStrategyService";
-import type { SkinAnalysisResult } from "@/lib/types";
 
 const scanSearchSchema = z.object({
   // Set only when arriving straight from the onboarding survey (see
@@ -25,7 +21,7 @@ const scanSearchSchema = z.object({
 });
 
 export const Route = createFileRoute("/scan/")({
-  head: () => ({ meta: [{ title: "Skin Scan — Skingredient" }] }),
+  head: () => ({ meta: [{ title: "Skin scan — Skingredient" }] }),
   validateSearch: scanSearchSchema,
   component: Scan,
 });
@@ -45,6 +41,7 @@ function Scan() {
     symptoms,
     scheduleTomorrow,
     eventTiming,
+    checkInCompletedToday,
     ingredientHistory,
     irritatingCategories,
     products,
@@ -115,44 +112,15 @@ function Scan() {
     try {
       const { youcamRaw, ...result } = await skinAnalysisService.analyze(image);
 
-      // "Today's Skin Strategy" — generated exactly once here, right after
-      // the scan and before persistence, using context (schedule, shelf)
-      // that only exists client-side. A failure here must not block saving
-      // the analysis: skinStrategy just stays undefined/null and the
-      // Results/History cards show a non-AI fallback, never auto-retried.
-      let skinStrategy: string | null = null;
-      try {
-        const overallCondition = deriveOverallCondition(result);
-        const skinStrategyInput: SkinStrategyInput = {
-          scores: result,
-          overallCondition: { score: overallCondition.score, label: overallCondition.label },
-          skinType: deriveSkinType(result),
-          concerns: deriveSkinConcerns(result),
-          scheduleTomorrow,
-          eventTiming,
-          shelfCategories: Array.from(new Set(products.map((p) => p.category))),
-          irritatingIngredients: irritatingIngredientNames,
-        };
-        const strategyRes = await fetch("/api/skin-strategy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(skinStrategyInput),
-        });
-        const strategyBody = await strategyRes.json();
-        if (strategyRes.ok && strategyBody.skinStrategy) {
-          skinStrategy = strategyBody.skinStrategy;
-        }
-      } catch (strategyError) {
-        console.error("Failed to generate skin strategy", strategyError);
-      }
-
-      // The "Today's Plan" that will actually be shown right after this scan
-      // (appStore's own recommendation useMemo won't reflect `result` until
-      // setAnalysis below triggers a re-render) — computed the same way here
-      // so it can be frozen into the DB for History
-      // (src/routes/history.$analysisId.tsx) instead of always recomputed
-      // live, which would silently substitute today's symptoms/schedule for
-      // whatever was actually true when this scan happened.
+      // A completed scan always produces a report — never gated on today's
+      // Daily Check-in. AI Skin Strategy is the one part that IS gated: it
+      // requires both today's real analysis AND today's check-in, so it's
+      // deliberately generated below (after persisting), only when a
+      // check-in already exists — not here. This deterministic
+      // recommendation_snapshot always uses whatever check-in context is
+      // real right now (empty/"none" if the user hasn't checked in today —
+      // never a stale prior day's check-in) plus the always-on ingredient
+      // reaction context, so it's the honest "baseline" Case C promises.
       const recommendationSnapshot = generateRecommendation({
         analysis: result,
         symptoms,
@@ -168,16 +136,38 @@ function Scan() {
       // algorithm_version) as the source of truth rather than the pre-insert
       // in-memory object — see src/lib/data/analyses.ts. Best-effort: a save
       // failure shouldn't break a scan that otherwise succeeded, so fall
-      // back to the in-memory result and keep going.
-      const resultWithStrategy: SkinAnalysisResult = { ...result, skinStrategy };
-      let saved = resultWithStrategy;
+      // back to the in-memory result and keep going (skinStrategy stays
+      // null either way — generateAndPersistSkinStrategy below no-ops
+      // without a persisted id).
+      let saved = result;
       try {
-        saved = await createAnalysis(resultWithStrategy, youcamRaw, recommendationSnapshot);
+        saved = await createAnalysis(result, youcamRaw, recommendationSnapshot);
       } catch (saveError) {
         console.error("Failed to save analysis", saveError);
       }
 
       setAnalysis(saved);
+
+      // Today's Daily Check-in already exists (submitted before this scan) —
+      // combine it with the analysis we just saved to generate AI Skin
+      // Strategy exactly once, right now, and patch the same row (never a
+      // second analysis). If check-in hasn't happened yet, this is skipped
+      // entirely; submitting check-in later is what triggers it then (see
+      // src/routes/scan.check-in.tsx / appStore.submitTodaysCheckIn).
+      if (checkInCompletedToday) {
+        const enriched = await generateAndPersistSkinStrategy({
+          analysis: saved,
+          symptoms,
+          scheduleTomorrow,
+          eventTiming,
+          ingredientHistory,
+          irritatingCategories,
+          irritatingIngredientNames,
+          shelfCategories: Array.from(new Set(products.map((p) => p.category))),
+        });
+        if (enriched) setAnalysis(enriched);
+      }
+
       setTimeout(() => navigate({ to: "/results" }), 300);
     } catch (err) {
       setScanning(false);
@@ -252,9 +242,9 @@ function Scan() {
   ) : undefined;
 
   return (
-    <AppShell title="Skin Scan" hideNav={fromOnboarding} onBack={goBack} actions={skipToHome}>
+    <AppShell title="Skin scan" hideNav={fromOnboarding} onBack={goBack} actions={skipToHome}>
       <MobileHeader
-        title="Skin Scan"
+        title="Skin scan"
         onBack={goBack}
         rightSlot={
           skipToHome ?? (

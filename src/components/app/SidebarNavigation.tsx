@@ -15,7 +15,7 @@ import logo from "@/assets/logo_bars_only_transparent.png";
 
 const items = [
   { to: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
-  { to: "/shelf", label: "My Shelf", icon: Package, match: (p: string) => p.startsWith("/shelf") },
+  { to: "/shelf", label: "My shelf", icon: Package, match: (p: string) => p.startsWith("/shelf") },
   {
     to: "/scan",
     label: "Scan",
@@ -56,7 +56,8 @@ export function SidebarNavigation() {
   const { user, analysis } = useAppStore();
   // Same source of truth as Profile/Results — real analysis (has an id) →
   // deriveSkinType(), never the old hardcoded onboarding-answer string.
-  const skinType = analysis.id ? deriveSkinType(analysis) : "Not analyzed yet";
+  // `analysis` is null until a real scan has been saved/loaded (src/lib/appStore.tsx).
+  const skinType = analysis?.id ? deriveSkinType(analysis) : "Not analyzed yet";
 
   return (
     <aside className="hidden w-[232px] shrink-0 flex-col border-r border-hairline bg-white lg:flex">

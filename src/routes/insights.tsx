@@ -170,7 +170,7 @@ function Insights() {
                 <div className="mt-3 flex items-center justify-between">
                   <p className="text-[16px] font-semibold text-ink">{metric.label}</p>
                   <span className="rounded-full bg-surface-muted px-2 py-1 text-[11px] font-medium text-ink-muted">
-                    Last 7 Days
+                    Last 7 days
                   </span>
                 </div>
 

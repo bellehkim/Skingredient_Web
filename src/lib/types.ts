@@ -47,7 +47,10 @@ export type SkinDirection =
   | "hydration-support"
   | "oil-balance"
   | "texture-renewal"
-  | "pause-actives";
+  | "pause-actives"
+  /** Fallback when no concern branch in recommendationEngine.ts matches —
+   * a real, non-empty, gentle maintenance plan instead of an empty one. */
+  | "maintenance";
 
 export interface DailyRecommendation {
   direction: SkinDirection;
@@ -88,7 +91,12 @@ export interface RecommendationInput {
   irritatingCategories?: Set<string>;
 }
 
-export type ProductStatus = "use-today" | "optional" | "skip-today";
+/** "reaction-reported" is distinct from "skip-today": skip-today is a
+ * temporary daily-plan/ingredient-sensitivity signal that can change day to
+ * day; reaction-reported means the user explicitly reported an irritating
+ * reaction to this exact product (src/lib/data/productReactions.ts) — it
+ * persists until they change it, independent of today's plan. */
+export type ProductStatus = "use-today" | "optional" | "skip-today" | "reaction-reported";
 
 export interface Product {
   id: string;

@@ -79,6 +79,12 @@ function Home() {
   // Preserves the one-generation-per-analysis rule: this is the sole path
   // that can call Claude again, and only fires on an explicit user action.
   const retryDirection = async () => {
+    // Only reachable from the "Try again" button below, which only renders
+    // when todaysRoutineComplete is true — that implies scanCompletedToday,
+    // which implies analysis is real and non-null. This guard just gives
+    // TypeScript the same guarantee (appStore doesn't encode the
+    // relationship between the two in a way the type system can see here).
+    if (!analysis) return;
     setRetryingDirection(true);
     try {
       const res = await fetch("/api/skin-direction", {
@@ -169,7 +175,7 @@ function Home() {
                   <h2 className="mt-1 text-[26px] font-bold leading-tight lg:text-[32px]">
                     {recommendation.displayName}
                   </h2>
-                  {analysis.skinDirection ? (
+                  {analysis?.skinDirection ? (
                     <p className="mt-1.5 max-w-[280px] text-[13.5px] leading-relaxed text-white/90 lg:max-w-[420px] lg:text-[14.5px]">
                       {analysis.skinDirection}
                     </p>
@@ -303,7 +309,7 @@ function Home() {
                 <span className="grid h-8 w-8 place-items-center rounded-lg bg-white text-brand">
                   <Package size={16} />
                 </span>
-                Check products on My Shelf
+                Check products on my shelf
               </span>
               <ArrowRight size={16} className="text-ink-muted" />
             </Link>
@@ -368,9 +374,7 @@ function DailyRoutineStatus({
           <CheckCircle2 size={15} className="text-sage" />
         </div>
         <div className="flex-1">
-          <p className="text-[9.5px] font-bold tracking-[0.14em] text-ink-muted">
-            TODAY'S ROUTINE
-          </p>
+          <p className="text-[9.5px] font-bold tracking-[0.14em] text-ink-muted">TODAY'S ROUTINE</p>
           <p className="text-[14px] font-semibold text-ink">All done for today</p>
         </div>
       </div>

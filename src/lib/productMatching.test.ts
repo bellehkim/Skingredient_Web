@@ -55,3 +55,37 @@ describe("buildProductsFromCatalog — exact-ingredient reactions", () => {
     expect(product.status).toBe("skip-today");
   });
 });
+
+describe("buildProductsFromCatalog — product-level reactions", () => {
+  it("marks a product 'reaction-reported', not 'skip-today', when the user directly reported it as irritating", () => {
+    const catalog = [catalogRow(1, "Niacinamide", "niacinamide")];
+    const [product] = buildProductsFromCatalog(
+      catalog,
+      recommendation(),
+      new Set(),
+      new Set(["1"]),
+    );
+    expect(product.status).toBe("reaction-reported");
+  });
+
+  it("reaction-reported takes priority over an exact ingredient match", () => {
+    const catalog = [catalogRow(1, "Retinol", "retinoid")];
+    const [product] = buildProductsFromCatalog(
+      catalog,
+      recommendation(),
+      new Set(["retinol"]),
+      new Set(["1"]),
+    );
+    expect(product.status).toBe("reaction-reported");
+  });
+
+  it("does not flag a different product that happens to share an ingredient", () => {
+    const catalog = [
+      catalogRow(1, "Niacinamide", "niacinamide"),
+      catalogRow(2, "Niacinamide", "niacinamide"),
+    ];
+    const products = buildProductsFromCatalog(catalog, recommendation(), new Set(), new Set(["1"]));
+    expect(products[0].status).toBe("reaction-reported");
+    expect(products[1].status).not.toBe("reaction-reported");
+  });
+});

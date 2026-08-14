@@ -77,23 +77,32 @@ export function categoryDisplayName(category: string): string {
 
 /**
  * Turns the static catalog + today's recommendation into the Product[] shape
- * the UI (My Shelf) expects. A product is "skip-today" if it contains an
- * exact ingredient the user has reported as irritating (src/lib/data/
- * ingredientReactions.ts), or if any key ingredient matches an avoided
- * category; else "use-today" if any matches a prioritized category, else
- * "optional". No ranking, no scoring — first match wins. The exact-ingredient
- * check always takes priority: it's a real reported fact, the category check
- * is only a heuristic.
+ * the UI (My Shelf) expects. Status priority, highest first:
+ *
+ * 1. "reaction-reported" — this exact product is in `reactedProductIds`
+ *    (src/lib/data/productReactions.ts): the user explicitly reported an
+ *    irritating reaction to it. A reported fact, not a heuristic — checked
+ *    before anything else, and never triggered by a shared ingredient with
+ *    some other product the user reacted to.
+ * 2. "skip-today" — a temporary daily-plan signal: an exact ingredient the
+ *    user has reported as irritating (src/lib/data/ingredientReactions.ts),
+ *    or any key ingredient matching an avoided category.
+ * 3. "use-today" — any key ingredient matches a prioritized category.
+ * 4. "optional" — no strong match either way.
+ *
+ * No ranking, no scoring — first match wins within a tier.
  */
 export function buildProductsFromCatalog(
   catalog: CatalogProduct[],
   recommendation: DailyRecommendation,
   irritatingIngredients: Set<string> = new Set(),
+  reactedProductIds: Set<string> = new Set(),
 ): Product[] {
   const prioritized = labelsToCategories(recommendation.prioritizedIngredients);
   const avoided = labelsToCategories(recommendation.avoidedIngredients);
 
   return catalog.map((row) => {
+    const id = String(row.product_id);
     const keyIngredients = row.product_ingredients.map((pi) => pi.ingredients.inci_name);
     const categories = row.product_ingredients.flatMap((pi) =>
       pi.ingredients.ingredient_functions.map((f) => f.functional_category),
@@ -107,7 +116,10 @@ export function buildProductsFromCatalog(
 
     let status: ProductStatus = "optional";
     let reason = "No strong match for today's plan — safe to keep using.";
-    if (matchedIrritatingName) {
+    if (reactedProductIds.has(id)) {
+      status = "reaction-reported";
+      reason = "You reported irritation with this product — excluded from today's suggestions.";
+    } else if (matchedIrritatingName) {
       status = "skip-today";
       reason = `Contains ${matchedIrritatingName} — you've previously reported irritation with this ingredient.`;
     } else if (matchedAvoid) {
@@ -119,7 +131,7 @@ export function buildProductsFromCatalog(
     }
 
     return {
-      id: String(row.product_id),
+      id,
       brand: row.brand,
       name: row.product_name,
       category: row.category,

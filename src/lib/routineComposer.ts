@@ -117,6 +117,15 @@ function containsIrritatingIngredient(
   );
 }
 
+/** Exact-product exclusion (src/lib/data/productReactions.ts) — a product
+ * the user directly reported as irritating (and hasn't overridden via "Keep
+ * it anyway") is never placed into the routine, regardless of category.
+ * Independent of containsIrritatingIngredient: never triggered by a shared
+ * ingredient with some other product. */
+function hasReportedReaction(product: Product, reactedProductIds: Set<string>): boolean {
+  return reactedProductIds.has(product.id);
+}
+
 function pickForSlot(
   categories: string[],
   period: RoutinePeriod,
@@ -124,13 +133,15 @@ function pickForSlot(
   recommendedPool: Product[],
   avoidedCategories: Set<string>,
   irritatingIngredients: Set<string>,
+  reactedProductIds: Set<string>,
   catalog: CatalogProduct[],
 ): { product: Product; source: RoutineSource } | null {
   const eligible = (product: Product) =>
     categories.includes(product.category) &&
     isAllowedInPeriod(product, period, catalog) &&
     !containsAvoidedCategory(product, avoidedCategories, catalog) &&
-    !containsIrritatingIngredient(product, irritatingIngredients, catalog);
+    !containsIrritatingIngredient(product, irritatingIngredients, catalog) &&
+    !hasReportedReaction(product, reactedProductIds);
 
   const shelfMatch = shelfProducts.find(eligible);
   if (shelfMatch) return { product: shelfMatch, source: "shelf" };
@@ -148,6 +159,7 @@ function buildPeriod(
   recommendedPool: Product[],
   avoidedCategories: Set<string>,
   irritatingIngredients: Set<string>,
+  reactedProductIds: Set<string>,
   catalog: CatalogProduct[],
 ): RoutineSlot[] {
   return slots.map(({ label, categories }) => {
@@ -158,6 +170,7 @@ function buildPeriod(
       recommendedPool,
       avoidedCategories,
       irritatingIngredients,
+      reactedProductIds,
       catalog,
     );
     return { label, product: picked?.product ?? null, source: picked?.source ?? null };
@@ -179,11 +192,12 @@ export function composeRoutine(
   recommendedProducts: Product[],
   recommendation: DailyRecommendation,
   irritatingIngredients: Set<string> = new Set(),
+  reactedProductIds: Set<string> = new Set(),
 ): Routine {
   const avoidedCategories = labelsToCategories(recommendation.avoidedIngredients);
 
   const recommendedPool = recommendedProducts
-    .filter((p) => p.status !== "skip-today")
+    .filter((p) => p.status !== "skip-today" && p.status !== "reaction-reported")
     .slice()
     .sort((a, b) => (a.status === "use-today" ? 0 : 1) - (b.status === "use-today" ? 0 : 1));
 
@@ -195,6 +209,7 @@ export function composeRoutine(
       recommendedPool,
       avoidedCategories,
       irritatingIngredients,
+      reactedProductIds,
       catalog,
     ),
     pm: buildPeriod(
@@ -204,6 +219,7 @@ export function composeRoutine(
       recommendedPool,
       avoidedCategories,
       irritatingIngredients,
+      reactedProductIds,
       catalog,
     ),
   };

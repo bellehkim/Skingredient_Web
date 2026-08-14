@@ -13,26 +13,37 @@ export const Route = createFileRoute("/shelf/$productId")({
   component: ProductDetail,
 });
 
+const REACTION_LABELS = {
+  helpful: "Helpful",
+  neutral: "Neutral",
+  irritating: "Irritating",
+  unknown: "Not sure yet",
+} as const;
+
+const REACTION_TYPE_BY_LABEL: Record<
+  (typeof REACTION_LABELS)[keyof typeof REACTION_LABELS],
+  Reaction
+> = {
+  Helpful: "helpful",
+  Neutral: "neutral",
+  Irritating: "irritating",
+  "Not sure yet": "unknown",
+};
+
 function ProductDetail() {
   const { productId } = Route.useParams();
   const {
     products,
     productsLoading,
-    recordReaction,
     removeFromShelf,
     ingredientLibrary,
-    ingredientHistory,
+    productReactionHistory,
+    recordProductReaction,
+    excludedProductIds,
+    setProductReactionExcluded,
   } = useAppStore();
   const product = products.find((p) => p.id === productId);
   const [fav, setFav] = useState(false);
-  // Only controls whether "Irritating" was picked *this session* before any
-  // ingredient has been recorded for it yet — everything else (which picker
-  // button is selected, the confirmation text) is derived fresh from
-  // ingredientHistory below rather than tracked in separate local state.
-  // Local "saved" flags previously went stale after a reload, or whenever
-  // the picked ingredient wasn't the product's first key ingredient — the
-  // picker looked empty even though the reaction genuinely was saved.
-  const [localReaction, setLocalReaction] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // products loads asynchronously (appStore fetches catalog/shelf/custom
@@ -44,7 +55,7 @@ function ProductDetail() {
     if (productsLoading) {
       return (
         <AppShell title="Product" back="/shelf">
-          <MobileHeader title="Product Detail" back="/shelf" />
+          <MobileHeader title="Product detail" back="/shelf" />
           <PageContainer>
             <p className="mt-6 text-center text-[13px] text-ink-muted">Loading…</p>
           </PageContainer>
@@ -62,48 +73,22 @@ function ProductDetail() {
     ingredientLibrary.map((entry) => [entry.inciName.toLowerCase(), entry.id]),
   );
 
-  const REACTION_LABELS = {
-    helpful: "Helpful",
-    neutral: "Neutral",
-    irritating: "Irritating",
-    unknown: "Not sure yet",
-  } as const;
-
-  // Checked across every key ingredient, not just the first — a picker
-  // pick can land on any of them, and only looking at the first one meant
-  // a genuinely-saved reaction on the 2nd/3rd ingredient showed as blank
-  // after a reload.
-  const irritatingIngredients = product.keyIngredients.filter(
-    (name) => ingredientHistory[name.toLowerCase()] === "irritating",
-  );
-  const firstIngredientType = product.keyIngredients[0]
-    ? ingredientHistory[product.keyIngredients[0].toLowerCase()]
-    : undefined;
-  const persistedReactionType =
-    irritatingIngredients.length > 0 ? "irritating" : firstIngredientType;
-  const persistedReaction = persistedReactionType ? REACTION_LABELS[persistedReactionType] : null;
-  const reaction = localReaction ?? persistedReaction;
-
-  // Which picker button is selected — a specific ingredient, or "Unsure"
-  // when every key ingredient is currently flagged (that's what picking
-  // "Unsure" itself records, so it's indistinguishable from picking each
-  // ingredient individually — treated the same on restore).
-  const pickerSelection =
-    irritatingIngredients.length === 0
-      ? null
-      : irritatingIngredients.length === product.keyIngredients.length &&
-          product.keyIngredients.length > 1
-        ? "Unsure"
-        : irritatingIngredients[0];
+  // Product-level reaction (src/lib/data/productReactions.ts) — the single
+  // source of truth for this card, read straight from appStore so it
+  // survives a refresh with no separate local-state derivation needed.
+  // Deliberately never touches ingredient_reactions/Ingredient Sensitivities.
+  const reactionType = productReactionHistory[product.id];
+  const reaction = reactionType ? REACTION_LABELS[reactionType] : null;
+  const isExcluded = excludedProductIds.has(product.id);
 
   return (
     <AppShell
       title={product.name}
       back="/shelf"
-      breadcrumb={[{ label: "My Shelf", to: "/shelf" }, { label: product.brand }]}
+      breadcrumb={[{ label: "My shelf", to: "/shelf" }, { label: product.brand }]}
     >
       <MobileHeader
-        title="Product Detail"
+        title="Product detail"
         back="/shelf"
         rightSlot={
           <button
@@ -199,7 +184,7 @@ function ProductDetail() {
                 }}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border border-hairline bg-white py-3.5 text-[14px] font-semibold text-coral"
               >
-                Remove from Shelf
+                Remove from shelf
               </button>
             </section>
           </div>
@@ -211,26 +196,7 @@ function ProductDetail() {
             {(["Helpful", "Neutral", "Irritating", "Not sure yet"] as const).map((r) => (
               <button
                 key={r}
-                onClick={() => {
-                  setLocalReaction(r);
-                  const reactionType: Reaction =
-                    r === "Helpful"
-                      ? "helpful"
-                      : r === "Neutral"
-                        ? "neutral"
-                        : r === "Irritating"
-                          ? "irritating"
-                          : "unknown";
-                  // Only "Irritating" on a multi-ingredient product has a
-                  // real question to ask ("which one?") — every other case
-                  // (including a single-ingredient product, which has no
-                  // ambiguity either way) saves immediately across every key
-                  // ingredient instead of requiring a picker that isn't
-                  // actually asking anything.
-                  if (r !== "Irritating" || product.keyIngredients.length === 1) {
-                    product.keyIngredients.forEach((i) => recordReaction(i, reactionType));
-                  }
-                }}
+                onClick={() => recordProductReaction(product.id, REACTION_TYPE_BY_LABEL[r])}
                 className={`rounded-xl border py-2.5 text-[13px] font-medium ${
                   reaction === r
                     ? "border-brand bg-brand text-white"
@@ -242,43 +208,43 @@ function ProductDetail() {
             ))}
           </div>
 
-          {reaction === "Irritating" && product.keyIngredients.length > 1 && (
+          {reactionType === "irritating" && (
             <div className="mt-4 border-t border-hairline pt-4">
-              <p className="text-[13px] font-medium text-ink">
-                Which ingredient do you think caused it?
+              <p className="flex items-center gap-1.5 text-[13px] font-semibold text-sage">
+                <CheckCircle2 size={15} /> Reaction saved
               </p>
-              <div className="mt-2.5 flex flex-wrap gap-2">
-                {[...product.keyIngredients, "Unsure"].map((i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      if (i === "Unsure") {
-                        // Flags every key ingredient as a suspect rather
-                        // than saving nothing, since the user did report a
-                        // real reaction.
-                        product.keyIngredients.forEach((t) => recordReaction(t, "irritating"));
-                        return;
-                      }
-                      recordReaction(i, "irritating");
-                      // Un-flag any other key ingredient a previous
-                      // "Unsure" (or an earlier pick) left marked
-                      // irritating — otherwise every ingredient stays
-                      // irritating, "all irritating" still reads as
-                      // Unsure, and picking a specific one never visibly
-                      // takes effect.
-                      product.keyIngredients
-                        .filter((t) => t !== i && ingredientHistory[t.toLowerCase()] === "irritating")
-                        .forEach((t) => recordReaction(t, "unknown"));
-                    }}
-                    className={`rounded-full border px-3.5 py-2 text-[13px] font-medium ${
-                      pickerSelection === i
-                        ? "border-brand bg-brand text-white"
-                        : "border-hairline bg-white text-ink"
-                    }`}
-                  >
-                    {i}
-                  </button>
-                ))}
+              <p className="mt-0.5 text-[12.5px] text-ink-muted">
+                Added to your product reaction history.
+              </p>
+
+              <p className="mt-4 text-[13px] font-medium text-ink">
+                Exclude this product from your routine and recommendations?
+              </p>
+              <p className="mt-1 text-[11px] text-ink-muted">
+                Since you reported irritation, we recommend no longer suggesting or routining this
+                product.
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setProductReactionExcluded(product.id, true)}
+                  className={`rounded-xl border py-2.5 text-[13px] font-medium ${
+                    isExcluded
+                      ? "border-brand bg-brand text-white"
+                      : "border-hairline bg-white text-ink"
+                  }`}
+                >
+                  Exclude product
+                </button>
+                <button
+                  onClick={() => setProductReactionExcluded(product.id, false)}
+                  className={`rounded-xl border py-2.5 text-[13px] font-medium ${
+                    !isExcluded
+                      ? "border-brand bg-brand text-white"
+                      : "border-hairline bg-white text-ink"
+                  }`}
+                >
+                  Keep it anyway
+                </button>
               </div>
             </div>
           )}

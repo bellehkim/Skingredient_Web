@@ -7,7 +7,7 @@ import { useAppStore } from "@/lib/appStore";
 import brandMark from "@/assets/brand-mark.png";
 
 export const Route = createFileRoute("/ingredients/")({
-  head: () => ({ meta: [{ title: "Ingredient Explorer — Skingredient" }] }),
+  head: () => ({ meta: [{ title: "Ingredient explorer — Skingredient" }] }),
   component: Explorer,
 });
 
@@ -36,8 +36,8 @@ function Explorer() {
   const more = filtered;
 
   return (
-    <AppShell title="Ingredient Explorer">
-      <MobileHeader title="Ingredient Explorer" />
+    <AppShell title="Ingredient explorer">
+      <MobileHeader title="Ingredient explorer" />
       <PageContainer width="wide">
         <div className="flex items-center gap-2 rounded-2xl bg-surface-muted px-4 py-3">
           <Search size={16} className="text-ink-muted" />

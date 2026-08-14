@@ -14,6 +14,7 @@ const STATUS_LINE: Record<ProductStatus, { text: string; cls: string }> = {
   "use-today": { text: "✓ Recommended today", cls: "text-sage" },
   optional: { text: "✓ Optional today", cls: "text-[#a1770b]" },
   "skip-today": { text: "⚠ Skip today", cls: "text-coral" },
+  "reaction-reported": { text: "⚠ Reaction reported", cls: "text-coral" },
 };
 
 function IngredientDetail() {

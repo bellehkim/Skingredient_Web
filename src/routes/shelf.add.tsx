@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { ScanLine, Search, Camera, PenLine } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
@@ -22,6 +22,11 @@ function AddProduct() {
   const [showForm, setShowForm] = useState(false);
   const { addCustomProduct } = useAppStore();
   const navigate = useNavigate();
+  const router = useRouter();
+  // Reachable from both My Shelf and Home's "Add product" quick action — no
+  // single hardcoded back destination is correct for both, so back retraces
+  // actual navigation history instead (same pattern as scan.check-in.tsx).
+  const goBack = () => router.history.back();
   const [brand, setBrand] = useState("");
   const [name, setName] = useState("");
   const [category, setCategory] = useState<string>(PRODUCT_CATEGORIES[0]);
@@ -30,10 +35,10 @@ function AddProduct() {
     return (
       <AppShell
         title="Add product"
-        back="/shelf"
-        breadcrumb={[{ label: "My Shelf", to: "/shelf" }, { label: "Add manually" }]}
+        onBack={goBack}
+        breadcrumb={[{ label: "My shelf", to: "/shelf" }, { label: "Add manually" }]}
       >
-        <MobileHeader title="Add manually" back="/shelf" />
+        <MobileHeader title="Add manually" onBack={goBack} />
         <PageContainer width="narrow">
           <form
             className="mt-2 space-y-4"
@@ -54,7 +59,7 @@ function AddProduct() {
               />
             </div>
             <div>
-              <label className="text-[13px] font-semibold text-ink">Product Name</label>
+              <label className="text-[13px] font-semibold text-ink">Product name</label>
               <input
                 required
                 value={name}
@@ -92,10 +97,10 @@ function AddProduct() {
   return (
     <AppShell
       title="Add product"
-      back="/shelf"
-      breadcrumb={[{ label: "My Shelf", to: "/shelf" }, { label: "Add product" }]}
+      onBack={goBack}
+      breadcrumb={[{ label: "My shelf", to: "/shelf" }, { label: "Add product" }]}
     >
-      <MobileHeader title="Add product" back="/shelf" />
+      <MobileHeader title="Add product" onBack={goBack} />
       <PageContainer width="narrow">
         <p className="text-[14px] text-ink-muted">
           Choose how you'd like to add a product to your shelf.

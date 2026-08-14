@@ -88,6 +88,32 @@ export async function createAnalysis(
   return rowToResult(data as SkinAnalysisRow);
 }
 
+/**
+ * A third narrow exception to "analyses are immutable": patches only
+ * recommendation_snapshot, for when today's Daily Check-in changes but
+ * today's analysis already has a persisted skin_strategy — the "Today's
+ * Plan" ingredients can legitimately shift with new check-in context even
+ * though the AI Skin Strategy paragraph deliberately does not regenerate
+ * (see src/lib/skinStrategyFlow.ts). Never touches skin_strategy.
+ */
+export async function updateRecommendationSnapshot(
+  analysisId: string,
+  recommendationSnapshot: DailyRecommendation,
+): Promise<SkinAnalysisResult> {
+  const userId = await getCurrentUserId();
+
+  const { data, error } = await supabase
+    .from("skin_analyses")
+    .update({ recommendation_snapshot: recommendationSnapshot })
+    .eq("id", analysisId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return rowToResult(data as SkinAnalysisRow);
+}
+
 /** Most recent analysis for the current user, or null if they have none yet. */
 export async function getLatestAnalysis(): Promise<SkinAnalysisResult | null> {
   const userId = await getCurrentUserId();
@@ -138,11 +164,12 @@ export async function getAnalysisById(id: string): Promise<SkinAnalysisResult | 
 }
 
 /**
- * The one narrow exception to "analyses are immutable": patches
- * skin_direction (+ its generated_at) on an existing row after the manual
- * retry flow (src/routes/index.tsx) succeeds. Never inserts a new row, never
- * touches any other column. Returns the updated row so callers can refresh
- * app state from the persisted value rather than the pre-update object.
+ * One of two narrow exceptions to "analyses are immutable" (see
+ * updateSkinStrategy below for the other): patches skin_direction (+ its
+ * generated_at) on an existing row after the manual retry flow
+ * (src/routes/index.tsx) succeeds. Never inserts a new row, never touches
+ * any other column. Returns the updated row so callers can refresh app state
+ * from the persisted value rather than the pre-update object.
  */
 export async function updateSkinDirection(
   analysisId: string,
@@ -155,6 +182,39 @@ export async function updateSkinDirection(
     .update({
       skin_direction: skinDirection,
       skin_direction_generated_at: new Date().toISOString(),
+    })
+    .eq("id", analysisId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return rowToResult(data as SkinAnalysisRow);
+}
+
+/**
+ * The other narrow exception to "analyses are immutable": patches
+ * skin_strategy (+ its generated_at) and recommendation_snapshot on an
+ * existing row once today's Daily Check-in makes AI Skin Strategy
+ * generation possible — either right after a scan when a check-in already
+ * exists, or right after a check-in when today's scan already exists (see
+ * src/lib/skinStrategyFlow.ts, the only caller — it's also the one place
+ * that enforces "never regenerate an existing non-null skin_strategy").
+ * Never inserts a new row, never touches any other column.
+ */
+export async function updateSkinStrategy(
+  analysisId: string,
+  skinStrategy: string,
+  recommendationSnapshot: DailyRecommendation,
+): Promise<SkinAnalysisResult> {
+  const userId = await getCurrentUserId();
+
+  const { data, error } = await supabase
+    .from("skin_analyses")
+    .update({
+      skin_strategy: skinStrategy,
+      skin_strategy_generated_at: new Date().toISOString(),
+      recommendation_snapshot: recommendationSnapshot,
     })
     .eq("id", analysisId)
     .eq("user_id", userId)

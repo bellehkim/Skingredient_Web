@@ -50,20 +50,25 @@ function CheckIn() {
   // back destination is correct for all three, so back retraces actual
   // navigation history instead (see MobileHeader/DesktopTopBar's onBack).
   const goBack = () => router.history.back();
-  const { setSymptoms, setScheduleTomorrow, setEventTiming, markCheckInCompleted } = useAppStore();
+  const { submitTodaysCheckIn, scanCompletedToday } = useAppStore();
   const [selFeel, setSelFeel] = useState<string[]>([]);
   const [selTried, setSelTried] = useState<string[]>([]);
   // Single-select — one event type/timing, not several combined — unlike the
   // multi-select feelings/tried chips above.
   const [selWhat, setSelWhat] = useState<string | null>(null);
   const [selTiming, setSelTiming] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const needsTiming = selWhat !== null && selWhat !== "Nothing special";
   // Requires an actual pick in every section — including "What's happening?"
   // itself: needsTiming stays false before anything is chosen there too, so
   // that condition alone can't be the only gate or Continue would enable
   // with the event-type question never answered at all.
   const canContinue =
-    selFeel.length > 0 && selTried.length > 0 && selWhat !== null && (!needsTiming || selTiming !== null);
+    selFeel.length > 0 &&
+    selTried.length > 0 &&
+    selWhat !== null &&
+    (!needsTiming || selTiming !== null);
 
   const warn = useMemo(
     () => selFeel.some((s) => ["Burning", "Stinging"].includes(s)) || selFeel.includes("Swelling"),
@@ -129,20 +134,47 @@ function CheckIn() {
       </PageContainer>
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-hairline bg-white px-5 py-4">
+        {submitError && (
+          <p className="mx-auto mb-2 max-w-[400px] text-center text-[12.5px] text-coral">
+            {submitError}
+          </p>
+        )}
         <button
-          disabled={!canContinue}
-          onClick={() => {
-            if (!canContinue) return;
-            const mapped = selFeel.map((s) => s.toLowerCase().replace(/\s+/g, "-"));
-            setSymptoms(mapped);
-            setScheduleTomorrow(resolveScheduleOption(selWhat));
-            setEventTiming(needsTiming ? resolveEventTiming(selTiming) : "none");
-            markCheckInCompleted();
-            navigate({ to: "/scan", search: { onboarding: fromOnboarding } });
+          disabled={!canContinue || submitting}
+          onClick={async () => {
+            if (!canContinue || submitting) return;
+            setSubmitError(null);
+            setSubmitting(true);
+            try {
+              const mapped = selFeel.map((s) => s.toLowerCase().replace(/\s+/g, "-"));
+              // If today's scan already exists, this also generates (or, if a
+              // strategy already exists, just refreshes the deterministic
+              // snapshot for) AI Skin Strategy and patches that same analysis
+              // row — never a second one — so Results is fully personalized
+              // the moment we land there, no refresh needed.
+              const { hasTodaysScan } = await submitTodaysCheckIn({
+                symptoms: mapped,
+                scheduleOption: resolveScheduleOption(selWhat),
+                eventTiming: needsTiming ? resolveEventTiming(selTiming) : "none",
+              });
+              if (hasTodaysScan) {
+                navigate({ to: "/results" });
+              } else {
+                navigate({ to: "/scan", search: { onboarding: fromOnboarding } });
+              }
+            } catch (err) {
+              console.error("Failed to save check-in", err);
+              setSubmitError("Couldn't save your check-in. Please try again.");
+              setSubmitting(false);
+            }
           }}
           className="mx-auto block w-full max-w-[400px] rounded-2xl bg-brand py-4 text-[15px] font-semibold text-white shadow-lift disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Continue to skin scan
+          {submitting
+            ? "Saving…"
+            : scanCompletedToday
+              ? "Save check-in & view results"
+              : "Continue to skin scan"}
         </button>
       </div>
     </AppShell>

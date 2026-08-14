@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { Calendar } from "lucide-react";
+import { Calendar, ScanFace } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
@@ -11,7 +11,7 @@ import { deriveSkinType } from "@/lib/skinType";
 import { METRIC_COLORS } from "@/lib/metricColors";
 
 export const Route = createFileRoute("/results")({
-  head: () => ({ meta: [{ title: "Your Results — Skingredient" }] }),
+  head: () => ({ meta: [{ title: "Your results — Skingredient" }] }),
   component: Results,
 });
 
@@ -22,7 +22,38 @@ function Results() {
   // destination is correct for all of them, so back retraces actual
   // navigation history instead (same pattern as scan.check-in/onboarding).
   const goBack = () => router.history.back();
-  const { analysis, recommendation, todaysPicks, products, addToShelf } = useAppStore();
+  const {
+    analysis,
+    analysisLoading,
+    scanCompletedToday,
+    checkInCompletedToday,
+    recommendation,
+    todaysPicks,
+    products,
+    addToShelf,
+  } = useAppStore();
+
+  // Case A/B: no report without today's scan, regardless of check-in — a
+  // completed Skin Scan is the only thing that produces a report. `analysis`
+  // may still hold an older (not-today) analysis here; scanCompletedToday,
+  // not `analysis !== null`, is the real gate.
+  if (!scanCompletedToday) {
+    return (
+      <AppShell title="Your results" onBack={goBack}>
+        <MobileHeader title="Your results" onBack={goBack} />
+        <PageContainer width="narrow">
+          <NoReportYet checkInCompletedToday={checkInCompletedToday} loading={analysisLoading} />
+        </PageContainer>
+      </AppShell>
+    );
+  }
+
+  // Case C/D: scanCompletedToday guarantees analysis is today's real,
+  // non-null analysis — this check just gives TypeScript the same
+  // narrowing (appStore derives the two from the same state, but not in a
+  // way the type system can see across the early return above).
+  if (!analysis) return null;
+
   const {
     score,
     label: conditionLabel,
@@ -32,14 +63,21 @@ function Results() {
   const shelfIds = new Set(products.map((p) => p.id));
 
   return (
-    <AppShell title="Your Results" onBack={goBack}>
+    <AppShell title="Your results" onBack={goBack}>
       <MobileHeader
-        title="Your Results"
+        title="Your results"
         onBack={goBack}
         rightSlot={<Calendar size={18} className="text-ink" />}
       />
       <PageContainer width="wide">
-        <SkinStrategyCard strategy={analysis.skinStrategy} />
+        {/* Case C: real scan, no check-in yet — no AI Skin Strategy, CTA
+            instead. Case D: both exist — the real generated (or non-AI
+            fallback, if generation failed) strategy. */}
+        {checkInCompletedToday ? (
+          <SkinStrategyCard strategy={analysis.skinStrategy} />
+        ) : (
+          <CompleteCheckInCta />
+        )}
 
         <div className="mt-4 grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
           {/* Overall Condition */}
@@ -116,7 +154,9 @@ function Results() {
             />
           </section>
 
-          {/* Today's Plan — moved directly under Overall Condition */}
+          {/* Today's Plan — deterministic, so it's shown in both Case C and
+              D. In Case C this is the baseline (no symptoms/schedule
+              context yet); in Case D it reflects today's check-in too. */}
           <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft lg:col-start-1 lg:row-start-2">
             <h3 className="text-[15px] font-semibold text-ink">Today's plan</h3>
             <p className="mt-1 text-[13px] text-ink-muted">
@@ -186,7 +226,7 @@ function Results() {
                         saved ? "bg-surface-muted text-ink-muted" : "bg-brand text-white"
                       }`}
                     >
-                      {saved ? "Saved" : "Save to Shelf"}
+                      {saved ? "Saved" : "Save to shelf"}
                     </button>
                   </div>
                 );
@@ -209,6 +249,61 @@ function Results() {
         </Link>
       </PageContainer>
     </AppShell>
+  );
+}
+
+/** Case A (no check-in, no scan) and Case B (check-in saved, no scan) — a
+ * Skin Scan is the only thing that produces a report, so both cases share
+ * the same "go scan" CTA; Case B's copy just acknowledges the check-in was
+ * saved rather than pretending it doesn't exist. */
+function NoReportYet({
+  checkInCompletedToday,
+  loading,
+}: {
+  checkInCompletedToday: boolean;
+  loading: boolean;
+}) {
+  if (loading) {
+    return <p className="mt-10 text-center text-[13px] text-ink-muted">Loading…</p>;
+  }
+  return (
+    <div className="mt-10 flex flex-col items-center text-center">
+      <div className="grid h-16 w-16 place-items-center rounded-full bg-brand-light">
+        <ScanFace size={28} className="text-brand" />
+      </div>
+      <h2 className="mt-4 text-[20px] font-bold text-ink">No report yet</h2>
+      <p className="mt-1.5 max-w-[280px] text-[13.5px] leading-relaxed text-ink-muted">
+        {checkInCompletedToday
+          ? "Today's check-in is saved. Complete a skin scan to see your report."
+          : "Complete a skin scan to get your skin analysis report."}
+      </p>
+      <Link
+        to="/scan"
+        className="mt-5 rounded-2xl bg-brand px-6 py-3.5 text-[14px] font-semibold text-white shadow-lift"
+      >
+        Start skin scan
+      </Link>
+    </div>
+  );
+}
+
+/** Case C — real scan, no check-in yet: AI Skin Strategy deliberately hasn't
+ * been generated (see src/lib/skinStrategyFlow.ts), so this CTA replaces
+ * SkinStrategyCard rather than showing a fallback that implies it tried. */
+function CompleteCheckInCta() {
+  return (
+    <section className="mt-4 rounded-3xl border border-dashed border-hairline bg-surface-muted p-5">
+      <h3 className="text-[15px] font-semibold text-ink">✨ Today's skin strategy</h3>
+      <p className="mt-2 text-[13.5px] leading-relaxed text-ink-muted">
+        Complete today's check-in to personalize your skin strategy.
+      </p>
+      <Link
+        to="/scan/check-in"
+        className="mt-3 inline-block rounded-full bg-brand px-4 py-2 text-[12.5px] font-semibold text-white"
+      >
+        Daily check-in
+      </Link>
+    </section>
   );
 }
 

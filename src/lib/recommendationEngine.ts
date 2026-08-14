@@ -9,20 +9,36 @@ const DISPLAY: Record<SkinDirection, string> = {
   "oil-balance": "Oil Balance",
   "texture-renewal": "Texture Renewal",
   "pause-actives": "Pause Actives",
+  maintenance: "Healthy Maintenance",
 };
 
 const SEVERE_SYMPTOMS = ["burning", "swelling", "severe-itching", "rash"];
+
+// Healthy/Maintenance fallback — the starting point below, used whenever no
+// concern branch matches. Deliberately gentle, barrier-supportive ingredients
+// only (never a strong active by default), so a healthy scan still produces
+// a real, non-empty plan for Recommended Products/Routine/AI Skin Strategy
+// to agree on, instead of an empty PRIORITIZE with nothing to build on.
+const MAINTENANCE_PRIORITIZED = [
+  "Glycerin",
+  "Hyaluronic Acid",
+  "Ceramides",
+  "Panthenol",
+  "Squalane",
+];
+const MAINTENANCE_EXPLANATION =
+  "Your skin looks healthy today — a consistent, barrier-supportive routine is all it needs.";
 
 export function generateRecommendation(input: RecommendationInput): DailyRecommendation {
   const { analysis, symptoms, sensitivities, scheduleTomorrow, eventTiming, irritatingCategories } =
     input;
   const severe = symptoms.some((s) => SEVERE_SYMPTOMS.includes(s));
 
-  let direction: SkinDirection = "hydration-support";
-  let prioritized: string[] = [];
+  let direction: SkinDirection = "maintenance";
+  let prioritized: string[] = [...MAINTENANCE_PRIORITIZED];
   let avoided: string[] = [];
   let risk: "low" | "moderate" | "high" = "low";
-  let explanation = "";
+  let explanation = MAINTENANCE_EXPLANATION;
 
   if (severe) {
     direction = "pause-actives";
@@ -113,6 +129,14 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
   const lowerSens = sensitivities.map((s) => s.toLowerCase());
   prioritized = prioritized.filter((i) => !lowerSens.includes(i.toLowerCase()));
 
+  // Final conflict resolution, run once, authoritatively, after every other
+  // adjustment (baseline branch, schedule, reaction/sensitivity) — AVOID
+  // always wins over PRIORITIZE, whichever stage introduced the conflict.
+  // Every downstream surface (Today's Plan, Recommended Products, Shelf
+  // status, Routine, AI Skin Strategy) reads this same resolved list; none
+  // of them should re-resolve conflicts on their own.
+  prioritized = resolveAvoidPriorityConflicts(prioritized, avoided);
+
   return {
     direction,
     displayName: DISPLAY[direction],
@@ -121,4 +145,26 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
     avoidedIngredients: avoided,
     riskLevel: risk,
   };
+}
+
+/**
+ * Exported for testing — drops any prioritized ingredient that conflicts
+ * with something avoided, either an exact match (e.g. avoiding "Retinoids"
+ * while also somehow still prioritizing "Retinoids") or a shared
+ * functional_category (e.g. prioritizing "Salicylic Acid" while avoiding
+ * "BHA" — both map to the "salicylic_acid" category via productMatching.ts's
+ * exact label bridge, no fuzzy matching). Never removes a prioritized
+ * ingredient that isn't actually related to anything avoided.
+ */
+export function resolveAvoidPriorityConflicts(prioritized: string[], avoided: string[]): string[] {
+  const avoidedLower = new Set(avoided.map((a) => a.toLowerCase()));
+  const avoidedCategories = new Set(
+    avoided.map((a) => categoryForLabel(a)).filter((c): c is string => Boolean(c)),
+  );
+
+  return prioritized.filter((label) => {
+    if (avoidedLower.has(label.toLowerCase())) return false;
+    const category = categoryForLabel(label);
+    return !(category && avoidedCategories.has(category));
+  });
 }

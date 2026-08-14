@@ -128,4 +128,24 @@ describe("composeRoutine", () => {
 
     expect(routine.pm.find((s) => s.label === "Serum or Treatment")?.product).toBeNull();
   });
+
+  it("never places a product the user directly reported as irritating, independent of ingredients", () => {
+    const catalog = [catalogRow(1, "Treatment", ["niacinamide"])];
+    const shelf = [product("1", "Treatment")];
+    const routine = composeRoutine(catalog, shelf, [], recommendation(), new Set(), new Set(["1"]));
+
+    expect(routine.am.find((s) => s.label === "Serum or Treatment")?.product).toBeNull();
+    expect(routine.pm.find((s) => s.label === "Serum or Treatment")?.product).toBeNull();
+  });
+
+  it("does not exclude an unrelated product that merely shares a category with a reacted product", () => {
+    const catalog = [
+      catalogRow(1, "Treatment", ["niacinamide"]),
+      catalogRow(2, "Treatment", ["niacinamide"]),
+    ];
+    const shelf = [product("2", "Treatment")];
+    const routine = composeRoutine(catalog, shelf, [], recommendation(), new Set(), new Set(["1"]));
+
+    expect(routine.pm.find((s) => s.label === "Serum or Treatment")?.product?.id).toBe("2");
+  });
 });

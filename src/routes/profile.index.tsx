@@ -25,7 +25,13 @@ import { deriveSkinType } from "@/lib/skinType";
 // untouched — for when goals are backed by real, editable user data.
 const SHOW_SKIN_GOALS = false;
 
-export const Route = createFileRoute("/profile")({
+// Deliberately profile.index.tsx, not profile.tsx: a literal profile.tsx
+// file makes TanStack Router treat it as the *parent layout* for
+// profile.reactions.tsx/profile.sensitivities.tsx (they'd nest under it via
+// getParentRoute), which silently never renders those child pages unless
+// the parent also renders an <Outlet/> — same convention shelf.index.tsx
+// already uses for exactly this reason (no shelf.tsx layout file either).
+export const Route = createFileRoute("/profile/")({
   head: () => ({ meta: [{ title: "Profile — Skingredient" }] }),
   component: Profile,
 });
@@ -38,8 +44,8 @@ const menu: { icon: typeof User; label: string; to?: string }[] = [
   // convention as the other not-yet-implemented rows below) until there's a
   // real "view your completed skin profile" destination to link to.
   { icon: Sparkles, label: "Skin profile" },
-  { icon: AlertTriangle, label: "Ingredient sensitivities" },
-  { icon: ClipboardList, label: "Ingredient reaction history" },
+  { icon: AlertTriangle, label: "Ingredient sensitivities", to: "/profile/sensitivities" },
+  { icon: ClipboardList, label: "Product reaction history", to: "/profile/reactions" },
   { icon: BellRing, label: "Reminders" },
   { icon: Lock, label: "Privacy" },
   { icon: HelpCircle, label: "Help center" },
@@ -48,12 +54,11 @@ const menu: { icon: typeof User; label: string; to?: string }[] = [
 
 function Profile() {
   const { user, analysis } = useAppStore();
-  // Real, persisted analyses always have an id (src/lib/types.ts); the
-  // mockAnalysis fallback used before any scan never does — same check
-  // appStore.tsx uses to gate Routine's catalog fallback. Skin Type is
-  // always derived from this, live, via the same deriveSkinType() Results
-  // uses — never a separate onboarding-answer value.
-  const skinType = analysis.id ? deriveSkinType(analysis) : null;
+  // `analysis` is null until a real scan has been saved/loaded — no more
+  // mockAnalysis fallback (src/lib/appStore.tsx). Skin Type is always
+  // derived from it, live, via the same deriveSkinType() Results uses —
+  // never a separate onboarding-answer value.
+  const skinType = analysis?.id ? deriveSkinType(analysis) : null;
   const [resetting, setResetting] = useState(false);
   // Portaled to document.body below so it floats in the true viewport
   // corner — AppShell's desktop card wrapper is `lg:overflow-hidden`, which
@@ -69,14 +74,13 @@ function Profile() {
   // against the now-empty tables instead of leaving stale in-memory state.
   const handleResetDemo = async () => {
     const confirmed = window.confirm(
-      "Reset all demo data? This will clear scans, Shelf items, and personal products.",
+      "Reset all demo data? This will clear scans, shelf items, and personal products.",
     );
     if (!confirmed) return;
 
     setResetting(true);
     try {
       await resetDemoUser();
-      localStorage.removeItem("skingredient");
       window.location.href = "/welcome";
     } catch (err) {
       console.error("Failed to reset demo data", err);
@@ -178,7 +182,7 @@ function Profile() {
             disabled={resetting}
             className="fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-full border border-dashed border-coral/40 bg-coral-light/90 px-3.5 py-2 text-[12px] font-semibold text-coral shadow-lift backdrop-blur disabled:opacity-60 lg:bottom-6 lg:right-6"
           >
-            <Trash2 size={13} /> {resetting ? "Resetting…" : "Reset Demo"}
+            <Trash2 size={13} /> {resetting ? "Resetting…" : "Reset demo"}
           </button>,
           document.body,
         )}

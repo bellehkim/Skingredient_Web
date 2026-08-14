@@ -16,7 +16,7 @@ import { Sun, Moon, Lightbulb } from "lucide-react";
 
 const PLANNED_FEATURES = [
   "Swap products based on your preferences",
-  "Prioritize products you already own on your Shelf",
+  "Prioritize products you already own on your shelf",
   "Personalize your AI-generated routine while keeping the same skincare goals",
 ];
 
@@ -34,7 +34,7 @@ const SHOW_INSIGHT_TIP = false;
 const SHOW_SKIN_STATUS_HEADER = false;
 
 export const Route = createFileRoute("/routine")({
-  head: () => ({ meta: [{ title: "Routine Planner — Skingredient" }] }),
+  head: () => ({ meta: [{ title: "Routine planner — Skingredient" }] }),
   component: Routine,
 });
 
@@ -70,8 +70,8 @@ function Routine() {
   const [showCustomizeInfo, setShowCustomizeInfo] = useState(false);
 
   return (
-    <AppShell title="Routine Planner">
-      <MobileHeader title="Routine Planner" />
+    <AppShell title="Routine planner">
+      <MobileHeader title="Routine planner" />
       <PageContainer width="wide">
         <div className="flex gap-2 overflow-x-auto pb-1 lg:grid lg:grid-cols-7 lg:gap-3 lg:overflow-visible">
           {week.map((d) => (
@@ -139,7 +139,7 @@ function Routine() {
         <DialogContent className="max-w-[380px] rounded-3xl border border-hairline bg-white p-6 shadow-lift">
           <DialogHeader>
             <DialogTitle className="text-[17px] font-bold text-ink">
-              Routine Customization
+              Routine customization
             </DialogTitle>
           </DialogHeader>
           <p className="text-[13.5px] text-ink-muted">Routine customization is coming soon.</p>
@@ -219,7 +219,7 @@ function RoutineSection({
                     : "bg-surface-muted text-ink-muted"
                 }`}
               >
-                {slot.source === "shelf" ? "On your Shelf" : "Recommended"}
+                {slot.source === "shelf" ? "On your shelf" : "Recommended"}
               </span>
             </div>
           ))}

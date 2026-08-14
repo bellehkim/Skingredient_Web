@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
-import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ResultsRouteImport } from './routes/results'
 import { Route as RoutineRouteImport } from './routes/routine'
 import { Route as WelcomeRouteImport } from './routes/welcome'
@@ -25,6 +24,9 @@ import { Route as ApiSkinStrategyRouteImport } from './routes/api/skin-strategy'
 import { Route as HistoryAnalysisIdRouteImport } from './routes/history.$analysisId'
 import { Route as IngredientsIndexRouteImport } from './routes/ingredients.index'
 import { Route as IngredientsIngredientIdRouteImport } from './routes/ingredients.$ingredientId'
+import { Route as ProfileIndexRouteImport } from './routes/profile.index'
+import { Route as ProfileReactionsRouteImport } from './routes/profile.reactions'
+import { Route as ProfileSensitivitiesRouteImport } from './routes/profile.sensitivities'
 import { Route as ScanIndexRouteImport } from './routes/scan.index'
 import { Route as ScanCheckInRouteImport } from './routes/scan.check-in'
 import { Route as ShelfIndexRouteImport } from './routes/shelf.index'
@@ -50,11 +52,6 @@ const McpRoute = McpRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProfileRoute = ProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResultsRoute = ResultsRouteImport.update({
@@ -114,6 +111,21 @@ const IngredientsIngredientIdRoute = IngredientsIngredientIdRouteImport.update({
   path: '/ingredients/$ingredientId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileIndexRoute = ProfileIndexRouteImport.update({
+  id: '/profile/',
+  path: '/profile/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileReactionsRoute = ProfileReactionsRouteImport.update({
+  id: '/profile/reactions',
+  path: '/profile/reactions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileSensitivitiesRoute = ProfileSensitivitiesRouteImport.update({
+  id: '/profile/sensitivities',
+  path: '/profile/sensitivities',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScanIndexRoute = ScanIndexRouteImport.update({
   id: '/scan/',
   path: '/scan/',
@@ -151,7 +163,6 @@ export interface FileRoutesByFullPath {
   '/insights': typeof InsightsRoute
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
-  '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/routine': typeof RoutineRoute
   '/welcome': typeof WelcomeRoute
@@ -162,10 +173,13 @@ export interface FileRoutesByFullPath {
   '/api/skin-strategy': typeof ApiSkinStrategyRoute
   '/history/$analysisId': typeof HistoryAnalysisIdRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
+  '/profile/reactions': typeof ProfileReactionsRoute
+  '/profile/sensitivities': typeof ProfileSensitivitiesRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
   '/shelf/add': typeof ShelfAddRoute
   '/ingredients/': typeof IngredientsIndexRoute
+  '/profile/': typeof ProfileIndexRoute
   '/scan/': typeof ScanIndexRoute
   '/shelf/': typeof ShelfIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -175,7 +189,6 @@ export interface FileRoutesByTo {
   '/insights': typeof InsightsRoute
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
-  '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/routine': typeof RoutineRoute
   '/welcome': typeof WelcomeRoute
@@ -186,10 +199,13 @@ export interface FileRoutesByTo {
   '/api/skin-strategy': typeof ApiSkinStrategyRoute
   '/history/$analysisId': typeof HistoryAnalysisIdRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
+  '/profile/reactions': typeof ProfileReactionsRoute
+  '/profile/sensitivities': typeof ProfileSensitivitiesRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
   '/shelf/add': typeof ShelfAddRoute
   '/ingredients': typeof IngredientsIndexRoute
+  '/profile': typeof ProfileIndexRoute
   '/scan': typeof ScanIndexRoute
   '/shelf': typeof ShelfIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -200,7 +216,6 @@ export interface FileRoutesById {
   '/insights': typeof InsightsRoute
   '/mcp': typeof McpRoute
   '/onboarding': typeof OnboardingRoute
-  '/profile': typeof ProfileRoute
   '/results': typeof ResultsRoute
   '/routine': typeof RoutineRoute
   '/welcome': typeof WelcomeRoute
@@ -211,10 +226,13 @@ export interface FileRoutesById {
   '/api/skin-strategy': typeof ApiSkinStrategyRoute
   '/history/$analysisId': typeof HistoryAnalysisIdRoute
   '/ingredients/$ingredientId': typeof IngredientsIngredientIdRoute
+  '/profile/reactions': typeof ProfileReactionsRoute
+  '/profile/sensitivities': typeof ProfileSensitivitiesRoute
   '/scan/check-in': typeof ScanCheckInRoute
   '/shelf/$productId': typeof ShelfProductIdRoute
   '/shelf/add': typeof ShelfAddRoute
   '/ingredients/': typeof IngredientsIndexRoute
+  '/profile/': typeof ProfileIndexRoute
   '/scan/': typeof ScanIndexRoute
   '/shelf/': typeof ShelfIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -226,7 +244,6 @@ export interface FileRouteTypes {
     | '/insights'
     | '/mcp'
     | '/onboarding'
-    | '/profile'
     | '/results'
     | '/routine'
     | '/welcome'
@@ -237,10 +254,13 @@ export interface FileRouteTypes {
     | '/api/skin-strategy'
     | '/history/$analysisId'
     | '/ingredients/$ingredientId'
+    | '/profile/reactions'
+    | '/profile/sensitivities'
     | '/scan/check-in'
     | '/shelf/$productId'
     | '/shelf/add'
     | '/ingredients/'
+    | '/profile/'
     | '/scan/'
     | '/shelf/'
     | '/.mcp/invoke-tool/$tool'
@@ -250,7 +270,6 @@ export interface FileRouteTypes {
     | '/insights'
     | '/mcp'
     | '/onboarding'
-    | '/profile'
     | '/results'
     | '/routine'
     | '/welcome'
@@ -261,10 +280,13 @@ export interface FileRouteTypes {
     | '/api/skin-strategy'
     | '/history/$analysisId'
     | '/ingredients/$ingredientId'
+    | '/profile/reactions'
+    | '/profile/sensitivities'
     | '/scan/check-in'
     | '/shelf/$productId'
     | '/shelf/add'
     | '/ingredients'
+    | '/profile'
     | '/scan'
     | '/shelf'
     | '/.mcp/invoke-tool/$tool'
@@ -274,7 +296,6 @@ export interface FileRouteTypes {
     | '/insights'
     | '/mcp'
     | '/onboarding'
-    | '/profile'
     | '/results'
     | '/routine'
     | '/welcome'
@@ -285,10 +306,13 @@ export interface FileRouteTypes {
     | '/api/skin-strategy'
     | '/history/$analysisId'
     | '/ingredients/$ingredientId'
+    | '/profile/reactions'
+    | '/profile/sensitivities'
     | '/scan/check-in'
     | '/shelf/$productId'
     | '/shelf/add'
     | '/ingredients/'
+    | '/profile/'
     | '/scan/'
     | '/shelf/'
     | '/.mcp/invoke-tool/$tool'
@@ -299,7 +323,6 @@ export interface RootRouteChildren {
   InsightsRoute: typeof InsightsRoute
   McpRoute: typeof McpRoute
   OnboardingRoute: typeof OnboardingRoute
-  ProfileRoute: typeof ProfileRoute
   ResultsRoute: typeof ResultsRoute
   RoutineRoute: typeof RoutineRoute
   WelcomeRoute: typeof WelcomeRoute
@@ -310,10 +333,13 @@ export interface RootRouteChildren {
   ApiSkinStrategyRoute: typeof ApiSkinStrategyRoute
   HistoryAnalysisIdRoute: typeof HistoryAnalysisIdRoute
   IngredientsIngredientIdRoute: typeof IngredientsIngredientIdRoute
+  ProfileReactionsRoute: typeof ProfileReactionsRoute
+  ProfileSensitivitiesRoute: typeof ProfileSensitivitiesRoute
   ScanCheckInRoute: typeof ScanCheckInRoute
   ShelfProductIdRoute: typeof ShelfProductIdRoute
   ShelfAddRoute: typeof ShelfAddRoute
   IngredientsIndexRoute: typeof IngredientsIndexRoute
+  ProfileIndexRoute: typeof ProfileIndexRoute
   ScanIndexRoute: typeof ScanIndexRoute
   ShelfIndexRoute: typeof ShelfIndexRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -347,13 +373,6 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/profile': {
-      id: '/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/results': {
@@ -433,6 +452,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IngredientsIngredientIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/': {
+      id: '/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof ProfileIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/reactions': {
+      id: '/profile/reactions'
+      path: '/profile/reactions'
+      fullPath: '/profile/reactions'
+      preLoaderRoute: typeof ProfileReactionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile/sensitivities': {
+      id: '/profile/sensitivities'
+      path: '/profile/sensitivities'
+      fullPath: '/profile/sensitivities'
+      preLoaderRoute: typeof ProfileSensitivitiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scan/': {
       id: '/scan/'
       path: '/scan'
@@ -483,7 +523,6 @@ const rootRouteChildren: RootRouteChildren = {
   InsightsRoute: InsightsRoute,
   McpRoute: McpRoute,
   OnboardingRoute: OnboardingRoute,
-  ProfileRoute: ProfileRoute,
   ResultsRoute: ResultsRoute,
   RoutineRoute: RoutineRoute,
   WelcomeRoute: WelcomeRoute,
@@ -495,10 +534,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSkinStrategyRoute: ApiSkinStrategyRoute,
   HistoryAnalysisIdRoute: HistoryAnalysisIdRoute,
   IngredientsIngredientIdRoute: IngredientsIngredientIdRoute,
+  ProfileReactionsRoute: ProfileReactionsRoute,
+  ProfileSensitivitiesRoute: ProfileSensitivitiesRoute,
   ScanCheckInRoute: ScanCheckInRoute,
   ShelfProductIdRoute: ShelfProductIdRoute,
   ShelfAddRoute: ShelfAddRoute,
   IngredientsIndexRoute: IngredientsIndexRoute,
+  ProfileIndexRoute: ProfileIndexRoute,
   ScanIndexRoute: ScanIndexRoute,
   ShelfIndexRoute: ShelfIndexRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,

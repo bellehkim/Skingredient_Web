@@ -3,7 +3,7 @@ import { Home, Package, ScanFace, ChartNoAxesCombined, UserRound } from "lucide-
 
 const tabs = [
   { to: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
-  { to: "/shelf", label: "My Shelf", icon: Package, match: (p: string) => p.startsWith("/shelf") },
+  { to: "/shelf", label: "My shelf", icon: Package, match: (p: string) => p.startsWith("/shelf") },
   { to: "/scan", label: "Scan", icon: ScanFace, match: (p: string) => p.startsWith("/scan") },
   // /results is where a scan's output lives, not the capture flow itself —
   // grouped with Insights (Trend/History), the other places "your results"
@@ -14,7 +14,12 @@ const tabs = [
     icon: ChartNoAxesCombined,
     match: (p: string) => p.startsWith("/insights") || p === "/results",
   },
-  { to: "/profile", label: "Profile", icon: UserRound, match: (p: string) => p.startsWith("/profile") },
+  {
+    to: "/profile",
+    label: "Profile",
+    icon: UserRound,
+    match: (p: string) => p.startsWith("/profile"),
+  },
 ] as const;
 
 export function BottomNavigation() {

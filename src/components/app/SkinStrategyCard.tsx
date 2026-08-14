@@ -8,7 +8,7 @@
 export function SkinStrategyCard({ strategy }: { strategy?: string | null }) {
   return (
     <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft">
-      <h3 className="text-[15px] font-semibold text-ink">✨ Today's Skin Strategy</h3>
+      <h3 className="text-[15px] font-semibold text-ink">✨ Today's skin strategy</h3>
       <p className="mt-2 text-[13.5px] leading-relaxed text-ink-muted">
         {strategy ?? "Focus on today's recommended ingredients and keep your routine consistent."}
       </p>

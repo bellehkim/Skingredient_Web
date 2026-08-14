@@ -14,7 +14,7 @@ const STEPS = [
     subtitle: "Select up to 5.",
     maxSelect: 5,
     options: [
-      "Acne / Breakouts",
+      "Acne / breakouts",
       "Acne scars",
       "Dark spots",
       "Redness",
@@ -140,7 +140,8 @@ function Onboarding() {
             const disabled = !on && atMax;
             let optionClass = "border-hairline bg-white text-ink";
             if (on) optionClass = "border-brand bg-brand text-white";
-            else if (disabled) optionClass = "cursor-not-allowed border-hairline bg-white text-ink-muted opacity-50";
+            else if (disabled)
+              optionClass = "cursor-not-allowed border-hairline bg-white text-ink-muted opacity-50";
             return (
               <button
                 key={o}
