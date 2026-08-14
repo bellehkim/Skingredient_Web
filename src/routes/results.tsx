@@ -1,6 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Calendar } from "lucide-react";
-import { z } from "zod";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
@@ -11,22 +10,18 @@ import { deriveOverallCondition } from "@/lib/overallCondition";
 import { deriveSkinType } from "@/lib/skinType";
 import { METRIC_COLORS } from "@/lib/metricColors";
 
-const resultsSearchSchema = z.object({
-  // Set when this scan came straight from the onboarding survey (see
-  // scan.index.tsx) — that scan was a one-time transitional screen, not
-  // somewhere worth going "back" to, so back points home instead. Reached
-  // from a normal daily scan, back to /scan (to rescan) is still correct.
-  onboarding: z.boolean().optional(),
-});
-
 export const Route = createFileRoute("/results")({
   head: () => ({ meta: [{ title: "Your Results — Skingredient" }] }),
-  validateSearch: resultsSearchSchema,
   component: Results,
 });
 
 function Results() {
-  const { onboarding: fromOnboarding } = Route.useSearch();
+  const router = useRouter();
+  // Reachable from a fresh scan, Home's "Today's Skin Direction" card, and
+  // (via onboarding) the standalone scan step — no single hardcoded
+  // destination is correct for all of them, so back retraces actual
+  // navigation history instead (same pattern as scan.check-in/onboarding).
+  const goBack = () => router.history.back();
   const { analysis, recommendation, todaysPicks, products, addToShelf } = useAppStore();
   const {
     score,
@@ -35,13 +30,12 @@ function Results() {
   } = deriveOverallCondition(analysis);
   const skinType = deriveSkinType(analysis);
   const shelfIds = new Set(products.map((p) => p.id));
-  const backTo = fromOnboarding ? "/" : "/scan";
 
   return (
-    <AppShell title="Your Results" back={backTo}>
+    <AppShell title="Your Results" onBack={goBack}>
       <MobileHeader
         title="Your Results"
-        back={backTo}
+        onBack={goBack}
         rightSlot={<Calendar size={18} className="text-ink" />}
       />
       <PageContainer width="wide">

@@ -19,13 +19,16 @@ const items = [
     to: "/scan",
     label: "Scan",
     icon: ScanFace,
-    match: (p: string) => p.startsWith("/scan") || p === "/results",
+    match: (p: string) => p.startsWith("/scan"),
   },
+  // /results is where a scan's output lives, not the capture flow itself —
+  // grouped with Insights (Trend/History), the other places "your results"
+  // live, rather than Scan (see src/routes/results.tsx).
   {
     to: "/insights",
     label: "Insights",
     icon: ChartNoAxesCombined,
-    match: (p: string) => p.startsWith("/insights"),
+    match: (p: string) => p.startsWith("/insights") || p === "/results",
   },
   {
     to: "/ingredients",
