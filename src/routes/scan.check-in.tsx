@@ -50,7 +50,7 @@ function CheckIn() {
   // back destination is correct for all three, so back retraces actual
   // navigation history instead (see MobileHeader/DesktopTopBar's onBack).
   const goBack = () => router.history.back();
-  const { setSymptoms, setScheduleTomorrow, setEventTiming, markScanCompleted } = useAppStore();
+  const { setSymptoms, setScheduleTomorrow, setEventTiming, markCheckInCompleted } = useAppStore();
   const [selFeel, setSelFeel] = useState<string[]>([]);
   const [selTried, setSelTried] = useState<string[]>([]);
   // Single-select — one event type/timing, not several combined — unlike the
@@ -137,7 +137,7 @@ function CheckIn() {
             setSymptoms(mapped);
             setScheduleTomorrow(resolveScheduleOption(selWhat));
             setEventTiming(needsTiming ? resolveEventTiming(selTiming) : "none");
-            markScanCompleted();
+            markCheckInCompleted();
             navigate({ to: "/scan", search: { onboarding: fromOnboarding } });
           }}
           className="mx-auto block w-full max-w-[400px] rounded-2xl bg-brand py-4 text-[15px] font-semibold text-white shadow-lift disabled:cursor-not-allowed disabled:opacity-40"

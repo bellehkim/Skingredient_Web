@@ -32,7 +32,12 @@ export const Route = createFileRoute("/profile")({
 
 const menu: { icon: typeof User; label: string; to?: string }[] = [
   { icon: User, label: "Personal info" },
-  { icon: Sparkles, label: "Skin profile", to: "/onboarding" },
+  // No `to` yet — this used to link straight to /onboarding regardless of
+  // whether the user had already completed it, always dumping a returning
+  // user back into the initial survey. Left as an inert placeholder (same
+  // convention as the other not-yet-implemented rows below) until there's a
+  // real "view your completed skin profile" destination to link to.
+  { icon: Sparkles, label: "Skin profile" },
   { icon: AlertTriangle, label: "Ingredient sensitivities" },
   { icon: ClipboardList, label: "Ingredient reaction history" },
   { icon: BellRing, label: "Reminders" },

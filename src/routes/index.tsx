@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Ban,
   CheckCircle2,
+  Circle,
   Package,
 } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
@@ -59,10 +60,12 @@ function Home() {
     recommendation,
     scheduleTomorrow,
     eventTiming,
+    checkInCompletedToday,
     scanCompletedToday,
     setAnalysis,
   } = useAppStore();
   const [retryingDirection, setRetryingDirection] = useState(false);
+  const todaysRoutineComplete = checkInCompletedToday && scanCompletedToday;
   const hasUpcomingPlan = scheduleTomorrow !== "none" && eventTiming !== "none";
   const eventWhenLabel = hasUpcomingPlan
     ? EVENT_TIMING_LABEL[eventTiming]
@@ -139,91 +142,141 @@ function Home() {
 
         <div className="mt-4 grid items-start gap-6 lg:grid-cols-[1.75fr_1fr]">
           <div className="flex flex-col lg:self-stretch">
-            {/* Hero: Today's Skin Direction */}
-            <Link
-              to="/results"
-              className="block overflow-hidden rounded-3xl border border-hairline shadow-soft transition active:scale-[0.995] lg:flex lg:flex-1 lg:flex-col"
-            >
-              <div
-                className="relative p-5 pb-16 text-white lg:p-7 lg:pb-14"
-                style={{
-                  background: "linear-gradient(135deg, #2FB88A 0%, #7BCB62 55%, #F5E28A 100%)",
-                }}
+            {/* Hero: Today's Skin Direction — gated on today's routine (see
+                DailyRoutineStatus below) actually being complete. Previously
+                this always rendered whatever the latest-ever analysis/
+                symptoms happened to be, so it could confidently present a
+                "Today's Plan" built from data that was days old and from a
+                check-in that never happened today — contradicting the
+                routine-status card sitting right below it. */}
+            {todaysRoutineComplete ? (
+              <Link
+                to="/results"
+                className="block overflow-hidden rounded-3xl border border-hairline shadow-soft transition active:scale-[0.995] lg:flex lg:flex-1 lg:flex-col"
               >
-                <div className="absolute -right-6 -top-8 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
-                <div className="absolute right-6 top-6 opacity-70">
-                  <Leaf />
-                </div>
-                <p className="text-[11px] font-semibold tracking-[0.18em] text-white/90">
-                  TODAY'S SKIN DIRECTION
-                </p>
-                <h2 className="mt-1 text-[26px] font-bold leading-tight lg:text-[32px]">
-                  {recommendation.displayName}
-                </h2>
-                {analysis.skinDirection ? (
-                  <p className="mt-1.5 max-w-[280px] text-[13.5px] leading-relaxed text-white/90 lg:max-w-[420px] lg:text-[14.5px]">
-                    {analysis.skinDirection}
+                <div
+                  className="relative p-5 pb-16 text-white lg:p-7 lg:pb-14"
+                  style={{
+                    background: "linear-gradient(135deg, #2FB88A 0%, #7BCB62 55%, #F5E28A 100%)",
+                  }}
+                >
+                  <div className="absolute -right-6 -top-8 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+                  <div className="absolute right-6 top-6 opacity-70">
+                    <Leaf />
+                  </div>
+                  <p className="text-[11px] font-semibold tracking-[0.18em] text-white/90">
+                    TODAY'S SKIN DIRECTION
                   </p>
-                ) : (
-                  <div className="mt-1.5 max-w-[280px] lg:max-w-[420px]">
-                    <p className="text-[13.5px] leading-relaxed text-white/90 lg:text-[14.5px]">
-                      Couldn't generate today's skin direction.
+                  <h2 className="mt-1 text-[26px] font-bold leading-tight lg:text-[32px]">
+                    {recommendation.displayName}
+                  </h2>
+                  {analysis.skinDirection ? (
+                    <p className="mt-1.5 max-w-[280px] text-[13.5px] leading-relaxed text-white/90 lg:max-w-[420px] lg:text-[14.5px]">
+                      {analysis.skinDirection}
                     </p>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        retryDirection();
-                      }}
-                      disabled={retryingDirection}
-                      className="mt-1 text-[12.5px] font-semibold text-white underline underline-offset-2 disabled:opacity-60"
-                    >
-                      {retryingDirection ? "Retrying…" : "Try again"}
-                    </button>
-                  </div>
-                )}
-                <span className="absolute bottom-5 right-5 inline-flex items-center gap-1.5 rounded-full bg-white/25 px-3 py-1.5 text-[11.5px] font-semibold text-white backdrop-blur">
-                  View today's plan <ArrowRight size={13} />
-                </span>
-              </div>
+                  ) : (
+                    <div className="mt-1.5 max-w-[280px] lg:max-w-[420px]">
+                      <p className="text-[13.5px] leading-relaxed text-white/90 lg:text-[14.5px]">
+                        Couldn't generate today's skin direction.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          retryDirection();
+                        }}
+                        disabled={retryingDirection}
+                        className="mt-1 text-[12.5px] font-semibold text-white underline underline-offset-2 disabled:opacity-60"
+                      >
+                        {retryingDirection ? "Retrying…" : "Try again"}
+                      </button>
+                    </div>
+                  )}
+                  <span className="absolute bottom-5 right-5 inline-flex items-center gap-1.5 rounded-full bg-white/25 px-3 py-1.5 text-[11.5px] font-semibold text-white backdrop-blur">
+                    View today's plan <ArrowRight size={13} />
+                  </span>
+                </div>
 
-              {/* Inset ingredient card */}
-              <div className="-mt-6 mx-4 rounded-2xl bg-white p-5 shadow-soft lg:mx-5 lg:my-auto lg:grid lg:grid-cols-2 lg:gap-6 lg:p-6">
-                <div>
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-sage">
-                    <ShieldCheck size={13} /> PRIORITIZE
+                {/* Inset ingredient card */}
+                <div className="-mt-6 mx-4 rounded-2xl bg-white p-5 shadow-soft lg:mx-5 lg:my-auto lg:grid lg:grid-cols-2 lg:gap-6 lg:p-6">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-sage">
+                      <ShieldCheck size={13} /> PRIORITIZE
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      {(recommendation.prioritizedIngredients.slice(0, 3).length
+                        ? recommendation.prioritizedIngredients.slice(0, 3)
+                        : ["Ceramides", "Panthenol", "Glycerin"]
+                      ).map((i) => (
+                        <IngredientTile key={i} name={i} tone="sage" />
+                      ))}
+                    </div>
                   </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    {(recommendation.prioritizedIngredients.slice(0, 3).length
-                      ? recommendation.prioritizedIngredients.slice(0, 3)
-                      : ["Ceramides", "Panthenol", "Glycerin"]
-                    ).map((i) => (
-                      <IngredientTile key={i} name={i} tone="sage" />
-                    ))}
+                  <div className="my-4 border-t border-hairline lg:hidden" />
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-coral">
+                      <Ban size={13} /> AVOID TODAY
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-2">
+                      {(recommendation.avoidedIngredients.slice(0, 3).length
+                        ? recommendation.avoidedIngredients.slice(0, 3)
+                        : ["Retinol", "AHA", "High Vit C"]
+                      ).map((i) => (
+                        <IngredientTile key={i} name={i} tone="coral" />
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <div className="my-4 border-t border-hairline lg:hidden" />
-                <div>
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-coral">
-                    <Ban size={13} /> AVOID TODAY
+              </Link>
+            ) : (
+              <Link
+                to={checkInCompletedToday ? "/scan" : "/scan/check-in"}
+                className="block overflow-hidden rounded-3xl border border-hairline shadow-soft transition active:scale-[0.995] lg:flex lg:flex-1 lg:flex-col"
+              >
+                <div
+                  className="relative p-5 pb-16 text-white lg:p-7 lg:pb-14"
+                  style={{
+                    background: "linear-gradient(135deg, #2FB88A 0%, #7BCB62 55%, #F5E28A 100%)",
+                  }}
+                >
+                  <div className="absolute -right-6 -top-8 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
+                  <div className="absolute right-6 top-6 opacity-70">
+                    <Leaf />
                   </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    {(recommendation.avoidedIngredients.slice(0, 3).length
-                      ? recommendation.avoidedIngredients.slice(0, 3)
-                      : ["Retinol", "AHA", "High Vit C"]
-                    ).map((i) => (
-                      <IngredientTile key={i} name={i} tone="coral" />
-                    ))}
-                  </div>
+                  <p className="text-[11px] font-semibold tracking-[0.18em] text-white/90">
+                    TODAY'S SKIN DIRECTION
+                  </p>
+                  <h2 className="mt-1 text-[26px] font-bold leading-tight lg:text-[32px]">
+                    Your plan is waiting
+                  </h2>
+                  <p className="mt-1.5 max-w-[280px] text-[13.5px] leading-relaxed text-white/90 lg:max-w-[420px] lg:text-[14.5px]">
+                    {checkInCompletedToday
+                      ? "Finish today's skin scan to see your personalized plan."
+                      : scanCompletedToday
+                        ? "Finish today's check-in to see your personalized plan."
+                        : "Complete today's check-in and skin scan to unlock your personalized plan."}
+                  </p>
+                  <span className="absolute bottom-5 right-5 inline-flex items-center gap-1.5 rounded-full bg-white/25 px-3 py-1.5 text-[11.5px] font-semibold text-white backdrop-blur">
+                    Start now <ArrowRight size={13} />
+                  </span>
                 </div>
-              </div>
-            </Link>
+
+                {/* Same inset-card silhouette as the real plan, without
+                    pretending there's personalized data to show yet. */}
+                <div className="-mt-6 mx-4 rounded-2xl bg-white p-6 text-center shadow-soft lg:mx-5 lg:my-auto lg:p-8">
+                  <p className="text-[13px] leading-relaxed text-ink-muted">
+                    Your prioritized and avoid-today ingredients will show up here once today's
+                    routine is complete.
+                  </p>
+                </div>
+              </Link>
+            )}
           </div>
 
           {/* Secondary column */}
           <div className="mt-3 lg:mt-0 lg:space-y-3">
-            <ScanStatusRow completed={scanCompletedToday} />
+            <DailyRoutineStatus checkInDone={checkInCompletedToday} scanDone={scanCompletedToday} />
 
             {/* Event */}
             <div
@@ -287,27 +340,65 @@ function IngredientTile({ name, tone }: { name: string; tone: "sage" | "coral" }
   );
 }
 
-function ScanStatusRow({ completed }: { completed: boolean }) {
-  if (completed) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl border border-sage/25 bg-sage-light px-4 py-3">
-        <CheckCircle2 size={18} className="text-sage" />
-        <p className="flex-1 text-[13.5px] font-semibold text-sage">Today's skin check completed</p>
-      </div>
-    );
-  }
+/**
+ * "Today's Plan" needs both steps done — check-in (adjusts the recommendation
+ * for symptoms/schedule) and an actual scan (the analysis it's based on).
+ * Previously these were tracked/shown independently, with no single place
+ * indicating whether *both* were actually done today, so it was easy to
+ * finish one and assume you were done. One card, one status per step, one
+ * CTA pointed at whichever step is still missing.
+ */
+function DailyRoutineStatus({
+  checkInDone,
+  scanDone,
+}: {
+  checkInDone: boolean;
+  scanDone: boolean;
+}) {
+  const bothDone = checkInDone && scanDone;
+
   return (
-    <Link
-      to="/scan/check-in"
-      className="flex items-center gap-3 rounded-2xl border border-brand/20 bg-brand-light px-4 py-3"
+    <div
+      className={`rounded-2xl border px-4 py-3 ${
+        bothDone ? "border-sage/25 bg-sage-light" : "border-brand/20 bg-brand-light"
+      }`}
     >
-      <ScanFace size={18} className="text-brand" />
-      <div className="flex-1">
-        <p className="text-[13.5px] font-semibold text-brand">Today's skin check is waiting</p>
-        <p className="text-[11.5px] text-brand/80">Tap to complete today's scan</p>
+      <p
+        className={`text-[11px] font-bold tracking-[0.14em] ${bothDone ? "text-sage" : "text-brand"}`}
+      >
+        TODAY'S ROUTINE
+      </p>
+      <div className="mt-2 flex items-center gap-4">
+        <StepStatus label="Daily check-in" done={checkInDone} />
+        <StepStatus label="Skin scan" done={scanDone} />
       </div>
-      <ArrowRight size={16} className="text-brand" />
-    </Link>
+      {bothDone ? (
+        <p className="mt-2.5 text-[12.5px] font-medium text-sage">
+          Both done for today — nice work.
+        </p>
+      ) : (
+        <Link
+          to={checkInDone ? "/scan" : "/scan/check-in"}
+          className="mt-2.5 flex items-center justify-between text-[13.5px] font-semibold text-brand"
+        >
+          {checkInDone ? "Continue to skin scan" : "Start today's check-in"}
+          <ArrowRight size={15} />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function StepStatus({ label, done }: { label: string; done: boolean }) {
+  return (
+    <span
+      className={`flex items-center gap-1.5 text-[12.5px] font-semibold ${
+        done ? "text-sage" : "text-ink-muted"
+      }`}
+    >
+      {done ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+      {label}
+    </span>
   );
 }
 

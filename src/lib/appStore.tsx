@@ -79,6 +79,14 @@ interface AppState {
    * frozen recommendation snapshot in src/routes/scan.index.tsx) so they get
    * the same category bridge the live `recommendation` above uses. */
   irritatingCategories: Set<string>;
+  /** Renamed from the old scanCompletedToday, which was misleading — it's
+   * set by the daily check-in questionnaire (src/routes/scan.check-in.tsx),
+   * not by an actual scan. Kept separate from scanCompletedToday below so
+   * Home can tell the two apart instead of conflating "checked in" with
+   * "actually scanned today". */
+  checkInCompletedToday: boolean;
+  /** True only once a real analysis (has an id) was captured today —
+   * derived from analysis.analyzedAt, not from check-in. */
   scanCompletedToday: boolean;
   hasCompletedOnboarding: boolean;
   /** In-progress onboarding survey answers (src/routes/onboarding.tsx) —
@@ -102,15 +110,14 @@ interface AppState {
    * catalog — see supabase/migrations/20260812030000_custom_products.sql. */
   addCustomProduct: (input: { brand: string; name: string; category: string }) => void;
   recordReaction: (ingredient: string, r: Reaction) => void;
-  markScanCompleted: () => void;
+  markCheckInCompleted: () => void;
   completeOnboarding: () => void;
   resetOnboarding: () => void;
 }
 
 const Ctx = createContext<AppState | null>(null);
 
-function todayKey() {
-  const d = new Date();
+function todayKey(d: Date = new Date()) {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
@@ -245,6 +252,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // populated from mock analysis data. Shelf-owned products are unaffected —
   // saving to Shelf is a real user action regardless of scan status.
   const hasRealAnalysis = Boolean(analysis.id);
+  // analyzedAt is a full timestamp (not just a date), so compare via
+  // todayKey() the same way lastScanDay already is, rather than a raw
+  // string/Date equality check.
+  const scanCompletedToday =
+    hasRealAnalysis && todayKey(new Date(analysis.analyzedAt)) === todayKey();
 
   const routine = useMemo(
     () =>
@@ -274,7 +286,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     ingredientHistory: reactionsData.history,
     irritatingIngredientNames: reactionsData.irritatingIngredientNames,
     irritatingCategories: reactionsData.irritatingCategories,
-    scanCompletedToday: lastScanDay === todayKey(),
+    checkInCompletedToday: lastScanDay === todayKey(),
+    scanCompletedToday,
     hasCompletedOnboarding,
     onboardingStep,
     onboardingAnswers,
@@ -347,7 +360,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
             );
         });
     },
-    markScanCompleted: () => setLastScanDay(todayKey()),
+    markCheckInCompleted: () => setLastScanDay(todayKey()),
     // Deliberately does NOT reset onboardingStep/onboardingAnswers: this
     // fires right as the user leaves the survey for check-in, and clearing
     // them here would wipe the very state that lets check-in's back button

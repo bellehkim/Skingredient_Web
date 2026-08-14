@@ -237,19 +237,35 @@ function Scan() {
     if (file) start(file);
   };
 
+  // Onboarding-only: there's no report without a scan, so skipping goes
+  // straight to Home rather than pretending there's somewhere else to land.
+  // The old rightSlot here was a "Help" icon that didn't actually open any
+  // help content and just linked to "/" anyway — replaced with an honest
+  // affordance for what it already did in this context.
+  const skipToHome = fromOnboarding ? (
+    <Link
+      to="/"
+      className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-ink-muted hover:bg-surface-muted hover:text-ink"
+    >
+      Skip
+    </Link>
+  ) : undefined;
+
   return (
-    <AppShell title="Skin Scan" hideNav={fromOnboarding} onBack={goBack}>
+    <AppShell title="Skin Scan" hideNav={fromOnboarding} onBack={goBack} actions={skipToHome}>
       <MobileHeader
         title="Skin Scan"
         onBack={goBack}
         rightSlot={
-          <Link
-            to="/"
-            aria-label="Help"
-            className="grid h-9 w-9 place-items-center rounded-full text-ink hover:bg-surface-muted"
-          >
-            <HelpCircle size={20} />
-          </Link>
+          skipToHome ?? (
+            <Link
+              to="/"
+              aria-label="Help"
+              className="grid h-9 w-9 place-items-center rounded-full text-ink hover:bg-surface-muted"
+            >
+              <HelpCircle size={20} />
+            </Link>
+          )
         }
       />
       <div className="px-5 lg:mx-auto lg:max-w-[900px] lg:px-10 lg:pt-8">
@@ -353,24 +369,11 @@ function Scan() {
               >
                 <ImageIcon size={16} /> Upload photo
               </button>
-              {!fromOnboarding && (
-                <Link
-                  to="/scan/check-in"
-                  className="inline-flex items-center rounded-2xl border border-hairline bg-white px-6 py-3 text-[14px] font-semibold text-brand"
-                >
-                  Daily check-in
-                </Link>
-              )}
             </div>
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between px-1 text-[13px] text-ink-muted lg:mt-8">
-          {!fromOnboarding && (
-            <Link to="/scan/check-in" className="font-medium text-brand lg:hidden">
-              Daily check-in
-            </Link>
-          )}
+        <div className="mt-4 flex items-center justify-end px-1 text-[13px] text-ink-muted lg:mt-8">
           <span>Skingredient does not diagnose medical conditions.</span>
         </div>
       </div>
