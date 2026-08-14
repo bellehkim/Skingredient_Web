@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
-import { SkinStrategyCard } from "@/components/app/SkinStrategyCard";
 import { getAnalysisById } from "@/lib/data/analyses";
 import { getMetricStatusText } from "@/lib/metricStatus";
 import { deriveOverallCondition } from "@/lib/overallCondition";
@@ -74,11 +73,9 @@ function HistoryDetail() {
       <PageContainer width="wide">
         <p className="text-[12px] font-medium text-ink-muted">{date}</p>
 
-        <SkinStrategyCard strategy={analysis.skinStrategy} />
-
         <div className="mt-3 grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
           <section
-            className="relative overflow-hidden rounded-3xl p-5 shadow-soft lg:p-7"
+            className="relative overflow-hidden rounded-3xl p-5 shadow-soft lg:col-start-1 lg:row-start-1 lg:p-7"
             style={{ background: "linear-gradient(140deg, #D9CCFA 0%, #C6D8FF 60%, #E7F0FF 100%)" }}
           >
             <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/40 blur-2xl" />
@@ -98,7 +95,7 @@ function HistoryDetail() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-hairline bg-white p-2 px-5 shadow-soft">
+          <section className="rounded-3xl border border-hairline bg-white p-2 px-5 shadow-soft lg:col-start-2 lg:row-start-1 lg:row-span-2">
             <MetricBar
               name="Redness"
               value={analysis.redness}
@@ -148,6 +145,52 @@ function HistoryDetail() {
               color={METRIC_COLORS.ageSpots}
             />
           </section>
+
+          {/* Recorded at scan time (src/lib/data/analyses.ts) — not
+              recomputed here, since the live recommendation engine also
+              depends on today's symptoms/schedule, not just this analysis's
+              scores. Absent for analyses saved before this field existed. */}
+          {analysis.recommendationSnapshot && (
+            <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft lg:col-start-1 lg:row-start-2 lg:mt-0">
+              <h3 className="text-[15px] font-semibold text-ink">Today's plan</h3>
+              <p className="mt-1 text-[13px] text-ink-muted">
+                Direction:{" "}
+                <span className="font-semibold text-ink">
+                  {analysis.recommendationSnapshot.displayName}
+                </span>{" "}
+                · Risk:{" "}
+                <span className="font-semibold text-ink capitalize">
+                  {analysis.recommendationSnapshot.riskLevel}
+                </span>
+              </p>
+              <div className="mt-3">
+                <p className="text-[11px] font-bold tracking-[0.14em] text-sage">PRIORITIZE</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {analysis.recommendationSnapshot.prioritizedIngredients.map((i) => (
+                    <span
+                      key={i}
+                      className="rounded-full bg-sage-light px-3 py-1 text-[12px] font-medium text-sage"
+                    >
+                      {i}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-3">
+                <p className="text-[11px] font-bold tracking-[0.14em] text-coral">AVOID TODAY</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {analysis.recommendationSnapshot.avoidedIngredients.map((i) => (
+                    <span
+                      key={i}
+                      className="rounded-full bg-coral-light px-3 py-1 text-[12px] font-medium text-coral"
+                    >
+                      {i}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       </PageContainer>
     </AppShell>

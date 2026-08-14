@@ -14,13 +14,36 @@ export const Route = createFileRoute("/shelf/$productId")({
 
 function ProductDetail() {
   const { productId } = Route.useParams();
-  const { products, recordReaction, removeFromShelf, ingredientLibrary } = useAppStore();
+  const {
+    products,
+    productsLoading,
+    recordReaction,
+    removeFromShelf,
+    ingredientLibrary,
+    ingredientHistory,
+  } = useAppStore();
   const product = products.find((p) => p.id === productId);
   const [fav, setFav] = useState(false);
-  const [reaction, setReaction] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  if (!product) throw notFound();
+  // products loads asynchronously (appStore fetches catalog/shelf/custom
+  // products once on mount) — on first render (including a hard refresh)
+  // it's still empty, which must not be mistaken for "this product doesn't
+  // exist". Only throw notFound() once loading has actually finished and
+  // there's genuinely no match (same pattern as ingredients.$ingredientId).
+  if (!product) {
+    if (productsLoading) {
+      return (
+        <AppShell title="Product" back="/shelf">
+          <MobileHeader title="Product Detail" back="/shelf" />
+          <PageContainer>
+            <p className="mt-6 text-center text-[13px] text-ink-muted">Loading…</p>
+          </PageContainer>
+        </AppShell>
+      );
+    }
+    throw notFound();
+  }
 
   // product.keyIngredients are always inci_name strings (from the catalog),
   // so match against inciName here, not the library's friendlier name.
@@ -29,6 +52,20 @@ function ProductDetail() {
   const ingredientIdByInciName = new Map(
     ingredientLibrary.map((entry) => [entry.inciName.toLowerCase(), entry.id]),
   );
+
+  // Derived from the persisted ingredientHistory (src/lib/appStore.tsx),
+  // not local-only state — otherwise this reset to unselected on every
+  // remount/refresh even after recordReaction had genuinely saved,
+  // making a real save look like it hadn't happened.
+  const REACTION_LABELS = {
+    helpful: "Helpful",
+    neutral: "Neutral",
+    irritating: "Irritating",
+    unknown: "Not sure yet",
+  } as const;
+  const firstIngredient = product.keyIngredients[0]?.toLowerCase();
+  const currentReactionType = firstIngredient ? ingredientHistory[firstIngredient] : undefined;
+  const reaction = currentReactionType ? REACTION_LABELS[currentReactionType] : null;
 
   return (
     <AppShell
@@ -146,7 +183,6 @@ function ProductDetail() {
               <button
                 key={r}
                 onClick={() => {
-                  setReaction(r);
                   product.keyIngredients.forEach((i) =>
                     recordReaction(
                       i,

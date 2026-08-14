@@ -22,6 +22,14 @@ export interface SkinAnalysisResult {
    * if generation failed — callers show a non-AI fallback, never retry automatically. */
   skinStrategy?: string | null;
   skinStrategyGeneratedAt?: string | null;
+  /** The "Today's Plan" actually computed at scan time (src/routes/scan.index.tsx,
+   * via useAppStore's live recommendation) — stored as-is rather than
+   * recomputed on read, since generateRecommendation() also depends on
+   * today's live symptoms/scheduleTomorrow/ingredientHistory, not just this
+   * analysis's scores. History (src/routes/history.$analysisId.tsx) renders
+   * this snapshot; Results shows the always-current live one instead. Null
+   * for analyses saved before this field existed. */
+  recommendationSnapshot?: DailyRecommendation | null;
 
   // Persistence metadata (src/lib/data/analyses.ts) — present once this
   // analysis has been saved to/read from skin_analyses; absent for

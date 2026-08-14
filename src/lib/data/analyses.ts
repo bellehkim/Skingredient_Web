@@ -1,6 +1,6 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentUserId } from "./demoUser";
-import type { SkinAnalysisResult } from "@/lib/types";
+import type { DailyRecommendation, SkinAnalysisResult } from "@/lib/types";
 import type { YouCamTaskResultItem } from "@/routes/api/skin-analysis";
 
 const ALGORITHM_VERSION = "v1.0.0";
@@ -19,6 +19,7 @@ interface SkinAnalysisRow {
   skin_direction_generated_at: string | null;
   skin_strategy: string | null;
   skin_strategy_generated_at: string | null;
+  recommendation_snapshot: DailyRecommendation | null;
   youcam_raw: YouCamTaskResultItem[] | null;
   algorithm_version: string;
   analyzed_at: string;
@@ -38,6 +39,7 @@ function rowToResult(row: SkinAnalysisRow): SkinAnalysisResult {
     skinDirectionGeneratedAt: row.skin_direction_generated_at,
     skinStrategy: row.skin_strategy,
     skinStrategyGeneratedAt: row.skin_strategy_generated_at,
+    recommendationSnapshot: row.recommendation_snapshot,
     analyzedAt: row.analyzed_at,
     id: row.id,
     createdAt: row.created_at,
@@ -55,6 +57,7 @@ function rowToResult(row: SkinAnalysisRow): SkinAnalysisResult {
 export async function createAnalysis(
   result: SkinAnalysisResult,
   youcamRaw?: YouCamTaskResultItem[],
+  recommendationSnapshot?: DailyRecommendation,
 ): Promise<SkinAnalysisResult> {
   const userId = await getCurrentUserId();
 
@@ -73,6 +76,7 @@ export async function createAnalysis(
       skin_direction_generated_at: result.skinDirection ? new Date().toISOString() : null,
       skin_strategy: result.skinStrategy ?? null,
       skin_strategy_generated_at: result.skinStrategy ? new Date().toISOString() : null,
+      recommendation_snapshot: recommendationSnapshot ?? null,
       youcam_raw: youcamRaw ?? null,
       algorithm_version: ALGORITHM_VERSION,
       analyzed_at: result.analyzedAt,

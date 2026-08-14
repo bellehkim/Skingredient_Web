@@ -10,6 +10,8 @@ import { createAnalysis } from "@/lib/data/analyses";
 import { deriveOverallCondition } from "@/lib/overallCondition";
 import { deriveSkinType } from "@/lib/skinType";
 import { deriveSkinConcerns } from "@/lib/skinConcerns";
+import { generateRecommendation } from "@/lib/recommendationEngine";
+import { mockUser } from "@/data/mockData";
 import type { SkinStrategyInput } from "@/lib/skinStrategyService";
 import type { SkinAnalysisResult } from "@/lib/types";
 
@@ -38,7 +40,8 @@ function Scan() {
   // should be able to go back to check-in — history-based since that's the
   // only entry point in this case.
   const goBack = fromOnboarding ? () => router.history.back() : undefined;
-  const { setAnalysis, scheduleTomorrow, eventTiming, products } = useAppStore();
+  const { setAnalysis, symptoms, scheduleTomorrow, eventTiming, ingredientHistory, products } =
+    useAppStore();
   const [scanning, setScanning] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +137,23 @@ function Scan() {
         console.error("Failed to generate skin strategy", strategyError);
       }
 
+      // The "Today's Plan" that will actually be shown right after this scan
+      // (appStore's own recommendation useMemo won't reflect `result` until
+      // setAnalysis below triggers a re-render) — computed the same way here
+      // so it can be frozen into the DB for History
+      // (src/routes/history.$analysisId.tsx) instead of always recomputed
+      // live, which would silently substitute today's symptoms/schedule for
+      // whatever was actually true when this scan happened.
+      const recommendationSnapshot = generateRecommendation({
+        analysis: result,
+        symptoms,
+        sensitivities: mockUser.sensitivities,
+        recentActives: [],
+        scheduleTomorrow,
+        eventTiming,
+        ingredientHistory,
+      });
+
       // Persist once, then use the inserted row (generated id, created_at,
       // algorithm_version) as the source of truth rather than the pre-insert
       // in-memory object — see src/lib/data/analyses.ts. Best-effort: a save
@@ -142,13 +162,13 @@ function Scan() {
       const resultWithStrategy: SkinAnalysisResult = { ...result, skinStrategy };
       let saved = resultWithStrategy;
       try {
-        saved = await createAnalysis(resultWithStrategy, youcamRaw);
+        saved = await createAnalysis(resultWithStrategy, youcamRaw, recommendationSnapshot);
       } catch (saveError) {
         console.error("Failed to save analysis", saveError);
       }
 
       setAnalysis(saved);
-      setTimeout(() => navigate({ to: "/results", search: { onboarding: fromOnboarding } }), 300);
+      setTimeout(() => navigate({ to: "/results" }), 300);
     } catch (err) {
       setScanning(false);
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

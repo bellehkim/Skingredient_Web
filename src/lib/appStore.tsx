@@ -18,6 +18,7 @@ import { getTodaysRecommendations } from "./productRecommendations";
 import { composeRoutine, type Routine } from "./routineComposer";
 import { getIngredientLibrary, type IngredientLibraryEntry } from "./data/ingredientLibrary";
 import { getProfile, setOnboardingCompleted } from "./data/profile";
+import { getIngredientReactions, upsertIngredientReaction } from "./data/ingredientReactions";
 import type {
   DailyRecommendation,
   EventTiming,
@@ -42,6 +43,12 @@ interface AppState {
   /** Only products the user has explicitly saved (shelf_items) — never the
    * catalog itself. */
   products: Product[];
+  /** True until the catalog/shelf/custom-product fetches that feed `products`
+   * have all settled. On first render (including a hard refresh) `products`
+   * is empty simply because those fetches haven't resolved yet — routes doing
+   * `products.find(...)` must check this before treating "not found yet" as
+   * "doesn't exist" (see src/routes/shelf.$productId.tsx). */
+  productsLoading: boolean;
   /** Deterministic AM/PM slot picks — src/lib/routineComposer.ts. Prefers
    * Shelf products over catalog recommendations, and never invents a
    * product for an unfillable slot. */
@@ -111,6 +118,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingAnswers, setOnboardingAnswers] = useState<string[][]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
 
   useEffect(() => {
     try {
@@ -120,7 +128,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         if (s.symptoms) setSymptoms(s.symptoms);
         if (s.scheduleTomorrow) setScheduleTomorrow(s.scheduleTomorrow);
         if (s.eventTiming) setEventTiming(s.eventTiming);
-        if (s.ingredientHistory) setIngredientHistory(s.ingredientHistory);
         if (s.lastScanDay) setLastScanDay(s.lastScanDay);
       }
     } catch {
@@ -132,12 +139,12 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(
         "skingredient",
-        JSON.stringify({ symptoms, scheduleTomorrow, eventTiming, ingredientHistory, lastScanDay }),
+        JSON.stringify({ symptoms, scheduleTomorrow, eventTiming, lastScanDay }),
       );
     } catch {
       // localStorage unavailable/corrupt — ignore, keep defaults.
     }
-  }, [symptoms, scheduleTomorrow, eventTiming, ingredientHistory, lastScanDay]);
+  }, [symptoms, scheduleTomorrow, eventTiming, lastScanDay]);
 
   // Hydrate from Supabase on mount — pure reads, never call YouCam/Claude.
   // If the user has a real saved analysis, prefer it over mockAnalysis so a
@@ -152,21 +159,28 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       .then((profile) => profile && setHasCompletedOnboarding(profile.hasCompletedOnboarding))
       .catch((err) => console.error("Failed to load profile", err));
 
-    getCatalogProducts()
-      .then(setCatalog)
-      .catch((err) => console.error("Failed to load product catalog", err));
-
-    getShelfProductIds()
-      .then(setShelfProductIds)
-      .catch((err) => console.error("Failed to load shelf", err));
-
-    getCustomProducts()
-      .then(setCustomProducts)
-      .catch((err) => console.error("Failed to load custom products", err));
+    Promise.allSettled([
+      getCatalogProducts().then(setCatalog),
+      getShelfProductIds().then(setShelfProductIds),
+      getCustomProducts().then(setCustomProducts),
+    ])
+      .then((results) => {
+        results.forEach((r, i) => {
+          if (r.status === "rejected") {
+            const label = ["catalog", "shelf", "custom products"][i];
+            console.error(`Failed to load ${label}`, r.reason);
+          }
+        });
+      })
+      .finally(() => setProductsLoading(false));
 
     getIngredientLibrary()
       .then(setIngredientLibrary)
       .catch((err) => console.error("Failed to load ingredient library", err));
+
+    getIngredientReactions()
+      .then(setIngredientHistory)
+      .catch((err) => console.error("Failed to load ingredient reactions", err));
   }, []);
 
   const recommendation = useMemo(
@@ -228,6 +242,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     recommendedProducts,
     todaysPicks,
     products,
+    productsLoading,
     routine,
     ingredientLibrary,
     symptoms,
@@ -275,8 +290,21 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         .then((product) => setCustomProducts((prev) => [...prev, product]))
         .catch((err) => console.error("Failed to add custom product", err));
     },
-    recordReaction: (ingredient, r) =>
-      setIngredientHistory((prev) => ({ ...prev, [ingredient.toLowerCase()]: r })),
+    recordReaction: (ingredient, r) => {
+      const key = ingredient.toLowerCase();
+      const previous = ingredientHistory[key];
+      setIngredientHistory((prev) => ({ ...prev, [key]: r }));
+      upsertIngredientReaction(ingredient, r).catch((err) => {
+        console.error("Failed to save ingredient reaction", err);
+        setIngredientHistory((prev) => {
+          if (previous === undefined) {
+            const { [key]: _removed, ...rest } = prev;
+            return rest;
+          }
+          return { ...prev, [key]: previous };
+        });
+      });
+    },
     markScanCompleted: () => setLastScanDay(todayKey()),
     // Deliberately does NOT reset onboardingStep/onboardingAnswers: this
     // fires right as the user leaves the survey for check-in, and clearing
