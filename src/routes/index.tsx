@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   Ban,
   CheckCircle2,
-  Circle,
   Package,
 } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
@@ -355,50 +354,50 @@ function DailyRoutineStatus({
   checkInDone: boolean;
   scanDone: boolean;
 }) {
-  const bothDone = checkInDone && scanDone;
-
-  return (
-    <div
-      className={`rounded-2xl border px-4 py-3 ${
-        bothDone ? "border-sage/25 bg-sage-light" : "border-brand/20 bg-brand-light"
-      }`}
-    >
-      <p
-        className={`text-[11px] font-bold tracking-[0.14em] ${bothDone ? "text-sage" : "text-brand"}`}
+  // Same visual grammar as the upcoming-plan pill below (gradient strip,
+  // white icon badge, small-caps label + bold title) rather than a bordered
+  // status box — keeps the secondary column feeling like one consistent
+  // design language instead of a mix of card styles.
+  if (checkInDone && scanDone) {
+    return (
+      <div
+        className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5"
+        style={{ background: "linear-gradient(90deg, #E3F8ED 0%, #DFF3FF 100%)" }}
       >
-        TODAY'S ROUTINE
-      </p>
-      <div className="mt-2 flex items-center gap-4">
-        <StepStatus label="Daily check-in" done={checkInDone} />
-        <StepStatus label="Skin scan" done={scanDone} />
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/70">
+          <CheckCircle2 size={15} className="text-sage" />
+        </div>
+        <div className="flex-1">
+          <p className="text-[9.5px] font-bold tracking-[0.14em] text-ink-muted">
+            TODAY'S ROUTINE
+          </p>
+          <p className="text-[14px] font-semibold text-ink">All done for today</p>
+        </div>
       </div>
-      {bothDone ? (
-        <p className="mt-2.5 text-[12.5px] font-medium text-sage">
-          Both done for today — nice work.
-        </p>
-      ) : (
-        <Link
-          to={checkInDone ? "/scan" : "/scan/check-in"}
-          className="mt-2.5 flex items-center justify-between text-[13.5px] font-semibold text-brand"
-        >
-          {checkInDone ? "Continue to skin scan" : "Start today's check-in"}
-          <ArrowRight size={15} />
-        </Link>
-      )}
-    </div>
-  );
-}
+    );
+  }
 
-function StepStatus({ label, done }: { label: string; done: boolean }) {
+  const title = checkInDone
+    ? "Check-in done — scan next"
+    : scanDone
+      ? "Scan done — check-in next"
+      : "Check-in & scan pending";
+
   return (
-    <span
-      className={`flex items-center gap-1.5 text-[12.5px] font-semibold ${
-        done ? "text-sage" : "text-ink-muted"
-      }`}
+    <Link
+      to={checkInDone ? "/scan" : "/scan/check-in"}
+      className="flex items-center gap-2.5 rounded-2xl px-4 py-2.5"
+      style={{ background: "linear-gradient(90deg, #EEEAFE 0%, #DCEEFF 100%)" }}
     >
-      {done ? <CheckCircle2 size={15} /> : <Circle size={15} />}
-      {label}
-    </span>
+      <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/70">
+        <ScanFace size={15} className="text-brand" />
+      </div>
+      <div className="flex-1">
+        <p className="text-[9.5px] font-bold tracking-[0.14em] text-ink-muted">TODAY'S ROUTINE</p>
+        <p className="text-[14px] font-semibold text-ink">{title}</p>
+      </div>
+      <ArrowRight size={16} className="text-ink-muted" />
+    </Link>
   );
 }
 
