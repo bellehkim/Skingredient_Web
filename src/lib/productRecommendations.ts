@@ -50,12 +50,26 @@ function selectDiverseTopMatches(ranked: RankedMatch[], max: number): RankedMatc
 export function getTodaysRecommendations(
   catalog: CatalogProduct[],
   analysis: SkinAnalysisResult,
+  irritatingIngredients: Set<string> = new Set(),
 ): Product[] {
   const concerns = deriveSkinConcerns(analysis);
   const targetCategories = new Set(concerns.flatMap((c) => CONCERN_INGREDIENT_CATEGORIES[c] ?? []));
   if (targetCategories.size === 0) return [];
 
-  const ranked = catalog
+  // Exact-ingredient exclusion (src/lib/data/ingredientReactions.ts) — a
+  // product containing an ingredient the user has reported as irritating is
+  // dropped entirely from "Recommended for you", never just deprioritized.
+  const eligibleCatalog =
+    irritatingIngredients.size === 0
+      ? catalog
+      : catalog.filter(
+          (product) =>
+            !product.product_ingredients.some((pi) =>
+              irritatingIngredients.has(pi.ingredients.inci_name.toLowerCase()),
+            ),
+        );
+
+  const ranked = eligibleCatalog
     .map((product) => {
       const matchedCategories = new Set<string>();
       const matchedIngredientNames: string[] = [];

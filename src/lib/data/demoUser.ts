@@ -22,9 +22,9 @@ export async function getCurrentUserId(): Promise<string> {
  * Hackathon dev/demo tool only (src/routes/profile.tsx, DEV-gated) — wipes
  * every table scoped to the fixed demo identity and puts it back to a
  * brand-new-user state. Deletes the profiles row and relies on the existing
- * `on delete cascade` FKs (skin_analyses, shelf_items, custom_products all
- * reference profiles.id) to clear everything owned by this user in one
- * statement, then re-seeds the same row — same fixed UUID, never a new
+ * `on delete cascade` FKs (skin_analyses, shelf_items, custom_products,
+ * ingredient_reactions all reference profiles.id) to clear everything owned
+ * by this user in one statement, then re-seeds the same row — same fixed UUID, never a new
  * identity — exactly like the migration's initial seed. Never touches
  * products/ingredients/ingredient_functions/product_ingredients: nothing
  * here references those tables, so they're untouched by construction.

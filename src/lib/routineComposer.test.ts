@@ -114,4 +114,18 @@ describe("composeRoutine", () => {
     expect(routine.am.find((s) => s.label === "Serum or Treatment")?.product?.id).toBe("custom-2");
     expect(routine.pm.find((s) => s.label === "Serum or Treatment")?.product?.id).toBe("custom-2");
   });
+
+  it("never places a product containing an exact reported-irritating ingredient into the routine", () => {
+    const catalog = [catalogRow(1, "Treatment", ["retinoid"])];
+    const shelf = [product("1", "Treatment")];
+    const routine = composeRoutine(
+      catalog,
+      shelf,
+      [],
+      recommendation(),
+      new Set(["ingredient retinoid"]),
+    );
+
+    expect(routine.pm.find((s) => s.label === "Serum or Treatment")?.product).toBeNull();
+  });
 });

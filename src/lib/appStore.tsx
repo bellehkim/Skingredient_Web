@@ -18,7 +18,12 @@ import { getTodaysRecommendations } from "./productRecommendations";
 import { composeRoutine, type Routine } from "./routineComposer";
 import { getIngredientLibrary, type IngredientLibraryEntry } from "./data/ingredientLibrary";
 import { getProfile, setOnboardingCompleted } from "./data/profile";
-import { getIngredientReactions, upsertIngredientReaction } from "./data/ingredientReactions";
+import {
+  getIngredientReactions,
+  upsertIngredientReaction,
+  EMPTY_INGREDIENT_REACTIONS,
+  type Reaction,
+} from "./data/ingredientReactions";
 import type {
   DailyRecommendation,
   EventTiming,
@@ -27,8 +32,6 @@ import type {
   ScheduleOption,
   SkinAnalysisResult,
 } from "./types";
-
-type Reaction = "helpful" | "neutral" | "irritating" | "unknown";
 
 interface AppState {
   user: typeof mockUser;
@@ -68,6 +71,14 @@ interface AppState {
   eventTiming: EventTiming;
   recommendation: DailyRecommendation;
   ingredientHistory: Record<string, Reaction>;
+  /** Original-case inci_name of every ingredient reported "irritating" — for
+   * AI Skin Strategy context (src/routes/scan.index.tsx). */
+  irritatingIngredientNames: string[];
+  /** functional_category of every ingredient reported "irritating" — passed
+   * into generateRecommendation() calls made outside this store (e.g. the
+   * frozen recommendation snapshot in src/routes/scan.index.tsx) so they get
+   * the same category bridge the live `recommendation` above uses. */
+  irritatingCategories: Set<string>;
   scanCompletedToday: boolean;
   hasCompletedOnboarding: boolean;
   /** In-progress onboarding survey answers (src/routes/onboarding.tsx) —
@@ -113,7 +124,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [symptoms, setSymptoms] = useState<string[]>([]);
   const [scheduleTomorrow, setScheduleTomorrow] = useState<ScheduleOption>("none");
   const [eventTiming, setEventTiming] = useState<EventTiming>("none");
-  const [ingredientHistory, setIngredientHistory] = useState<Record<string, Reaction>>({});
+  const [reactionsData, setReactionsData] = useState(EMPTY_INGREDIENT_REACTIONS);
   const [lastScanDay, setLastScanDay] = useState<string | null>(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -179,7 +190,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       .catch((err) => console.error("Failed to load ingredient library", err));
 
     getIngredientReactions()
-      .then(setIngredientHistory)
+      .then(setReactionsData)
       .catch((err) => console.error("Failed to load ingredient reactions", err));
   }, []);
 
@@ -192,9 +203,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         recentActives: [],
         scheduleTomorrow,
         eventTiming,
-        ingredientHistory,
+        ingredientHistory: reactionsData.history,
+        irritatingCategories: reactionsData.irritatingCategories,
       }),
-    [analysis, symptoms, scheduleTomorrow, eventTiming, ingredientHistory],
+    [analysis, symptoms, scheduleTomorrow, eventTiming, reactionsData],
   );
 
   // Skin concern → ingredient category → matching products, per
@@ -203,15 +215,19 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // only. It must never be treated as "my shelf": saving is a separate,
   // explicit user action (addToShelf below), never automatic.
   const recommendedProducts = useMemo(() => {
-    const computed = buildProductsFromCatalog(catalog, recommendation);
+    const computed = buildProductsFromCatalog(
+      catalog,
+      recommendation,
+      reactionsData.irritatingIngredients,
+    );
     return computed.map((p) =>
       statusOverrides[p.id] ? { ...p, status: statusOverrides[p.id] } : p,
     );
-  }, [catalog, recommendation, statusOverrides]);
+  }, [catalog, recommendation, statusOverrides, reactionsData]);
 
   const todaysPicks = useMemo(
-    () => getTodaysRecommendations(catalog, analysis),
-    [catalog, analysis],
+    () => getTodaysRecommendations(catalog, analysis, reactionsData.irritatingIngredients),
+    [catalog, analysis, reactionsData],
   );
 
   // The shelf is recommendedProducts filtered down to explicitly saved
@@ -232,8 +248,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
 
   const routine = useMemo(
     () =>
-      composeRoutine(catalog, products, hasRealAnalysis ? recommendedProducts : [], recommendation),
-    [catalog, products, recommendedProducts, recommendation, hasRealAnalysis],
+      composeRoutine(
+        catalog,
+        products,
+        hasRealAnalysis ? recommendedProducts : [],
+        recommendation,
+        reactionsData.irritatingIngredients,
+      ),
+    [catalog, products, recommendedProducts, recommendation, hasRealAnalysis, reactionsData],
   );
 
   const value: AppState = {
@@ -249,7 +271,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     scheduleTomorrow,
     eventTiming,
     recommendation,
-    ingredientHistory,
+    ingredientHistory: reactionsData.history,
+    irritatingIngredientNames: reactionsData.irritatingIngredientNames,
+    irritatingCategories: reactionsData.irritatingCategories,
     scanCompletedToday: lastScanDay === todayKey(),
     hasCompletedOnboarding,
     onboardingStep,
@@ -290,20 +314,38 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         .then((product) => setCustomProducts((prev) => [...prev, product]))
         .catch((err) => console.error("Failed to add custom product", err));
     },
+    // Optimistically update local state, then persist; on failure, refetch
+    // from Supabase so the UI can't drift from the real persisted state.
     recordReaction: (ingredient, r) => {
-      const key = ingredient.toLowerCase();
-      const previous = ingredientHistory[key];
-      setIngredientHistory((prev) => ({ ...prev, [key]: r }));
-      upsertIngredientReaction(ingredient, r).catch((err) => {
-        console.error("Failed to save ingredient reaction", err);
-        setIngredientHistory((prev) => {
-          if (previous === undefined) {
-            const { [key]: _removed, ...rest } = prev;
-            return rest;
-          }
-          return { ...prev, [key]: previous };
-        });
+      const name = ingredient.toLowerCase();
+      setReactionsData((prev) => {
+        const history = { ...prev.history, [name]: r };
+        const irritatingIngredients = new Set(prev.irritatingIngredients);
+        const irritatingIngredientNames = prev.irritatingIngredientNames.filter(
+          (n) => n.toLowerCase() !== name,
+        );
+        if (r === "irritating") {
+          irritatingIngredients.add(name);
+          irritatingIngredientNames.push(ingredient);
+        } else {
+          irritatingIngredients.delete(name);
+        }
+        // Category set can only grow correctly via a real refetch (we don't
+        // have functional_category client-side here) — recordReaction's
+        // Supabase call below triggers that refetch regardless of outcome.
+        return { ...prev, history, irritatingIngredients, irritatingIngredientNames };
       });
+      upsertIngredientReaction(ingredient, r)
+        .then(() => getIngredientReactions())
+        .then(setReactionsData)
+        .catch((err) => {
+          console.error("Failed to save ingredient reaction", err);
+          getIngredientReactions()
+            .then(setReactionsData)
+            .catch((refetchErr) =>
+              console.error("Failed to reload ingredient reactions", refetchErr),
+            );
+        });
     },
     markScanCompleted: () => setLastScanDay(todayKey()),
     // Deliberately does NOT reset onboardingStep/onboardingAnswers: this

@@ -117,3 +117,35 @@ describe("generateRecommendation — upcoming plan (type + timing)", () => {
     expect(withNone).toEqual(baseline);
   });
 });
+
+describe("generateRecommendation — reported ingredient reactions", () => {
+  it("moves a prioritized label to avoided when its functional_category was reported irritating", () => {
+    // Barrier-recovery day prioritizes Ceramides — reporting the exact
+    // ingredient "Ceramide NP" (which maps to the "ceramide" category, not
+    // the string "Ceramides") as irritating should still catch it via the
+    // category bridge, not a direct string comparison.
+    const { prioritizedIngredients, avoidedIngredients } = generateRecommendation({
+      analysis: analysis({ redness: 30, hydration: 40 }),
+      symptoms: [],
+      sensitivities: [],
+      recentActives: [],
+      irritatingCategories: new Set(["ceramide"]),
+    });
+    expect(prioritizedIngredients).not.toContain("Ceramides");
+    expect(avoidedIngredients).toContain("Ceramides");
+  });
+
+  it("leaves prioritized ingredients untouched when no reported reaction matches their category", () => {
+    const withoutReaction = recommend(analysis({ redness: 30, hydration: 40 }));
+    const withUnrelatedReaction = generateRecommendation({
+      analysis: analysis({ redness: 30, hydration: 40 }),
+      symptoms: [],
+      sensitivities: [],
+      recentActives: [],
+      irritatingCategories: new Set(["retinoid"]),
+    });
+    expect(withUnrelatedReaction.prioritizedIngredients).toEqual(
+      withoutReaction.prioritizedIngredients,
+    );
+  });
+});

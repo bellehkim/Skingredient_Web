@@ -81,6 +81,11 @@ export interface RecommendationInput {
   scheduleTomorrow?: ScheduleOption;
   eventTiming?: EventTiming;
   ingredientHistory?: Record<string, "helpful" | "neutral" | "irritating" | "unknown">;
+  /** functional_category of every ingredient the user has reported as
+   * "irritating" (src/lib/data/ingredientReactions.ts) — used only to move a
+   * label out of prioritizedIngredients into avoidedIngredients as a
+   * conservative UI-level signal, never to treat a whole family as unsafe. */
+  irritatingCategories?: Set<string>;
 }
 
 export type ProductStatus = "use-today" | "optional" | "skip-today";

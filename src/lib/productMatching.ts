@@ -77,13 +77,18 @@ export function categoryDisplayName(category: string): string {
 
 /**
  * Turns the static catalog + today's recommendation into the Product[] shape
- * the UI (My Shelf) expects. A product is "skip-today" if any key ingredient
- * matches an avoided category, else "use-today" if any matches a prioritized
- * category, else "optional". No ranking, no scoring — first match wins.
+ * the UI (My Shelf) expects. A product is "skip-today" if it contains an
+ * exact ingredient the user has reported as irritating (src/lib/data/
+ * ingredientReactions.ts), or if any key ingredient matches an avoided
+ * category; else "use-today" if any matches a prioritized category, else
+ * "optional". No ranking, no scoring — first match wins. The exact-ingredient
+ * check always takes priority: it's a real reported fact, the category check
+ * is only a heuristic.
  */
 export function buildProductsFromCatalog(
   catalog: CatalogProduct[],
   recommendation: DailyRecommendation,
+  irritatingIngredients: Set<string> = new Set(),
 ): Product[] {
   const prioritized = labelsToCategories(recommendation.prioritizedIngredients);
   const avoided = labelsToCategories(recommendation.avoidedIngredients);
@@ -93,13 +98,19 @@ export function buildProductsFromCatalog(
     const categories = row.product_ingredients.flatMap((pi) =>
       pi.ingredients.ingredient_functions.map((f) => f.functional_category),
     );
+    const matchedIrritatingName = keyIngredients.find((name) =>
+      irritatingIngredients.has(name.toLowerCase()),
+    );
 
     const matchedAvoid = categories.find((c) => avoided.has(c));
     const matchedPriority = categories.find((c) => prioritized.has(c));
 
     let status: ProductStatus = "optional";
     let reason = "No strong match for today's plan — safe to keep using.";
-    if (matchedAvoid) {
+    if (matchedIrritatingName) {
+      status = "skip-today";
+      reason = `Contains ${matchedIrritatingName} — you've previously reported irritation with this ingredient.`;
+    } else if (matchedAvoid) {
       status = "skip-today";
       reason = `Contains ${categoryDisplayName(matchedAvoid)} — pause while your skin recovers.`;
     } else if (matchedPriority) {

@@ -1,5 +1,6 @@
 import type { DailyRecommendation, RecommendationInput, SkinDirection } from "./types";
 import { applyScheduleAdjustment } from "./scheduleAdjustments";
+import { categoryDisplayName, categoryForLabel } from "./productMatching";
 
 const DISPLAY: Record<SkinDirection, string> = {
   "barrier-recovery": "Barrier Recovery",
@@ -13,7 +14,7 @@ const DISPLAY: Record<SkinDirection, string> = {
 const SEVERE_SYMPTOMS = ["burning", "swelling", "severe-itching", "rash"];
 
 export function generateRecommendation(input: RecommendationInput): DailyRecommendation {
-  const { analysis, symptoms, sensitivities, scheduleTomorrow, eventTiming, ingredientHistory } =
+  const { analysis, symptoms, sensitivities, scheduleTomorrow, eventTiming, irritatingCategories } =
     input;
   const severe = symptoms.some((s) => SEVERE_SYMPTOMS.includes(s));
 
@@ -88,8 +89,25 @@ export function generateRecommendation(input: RecommendationInput): DailyRecomme
     explanation = adjusted.explanation;
   }
 
-  if (ingredientHistory) {
-    prioritized = prioritized.filter((i) => ingredientHistory[i.toLowerCase()] !== "irritating");
+  // Bridge a reported-irritating exact ingredient to its functional_category
+  // (src/lib/data/ingredientReactions.ts), not by comparing the raw ingredient
+  // name against these category labels directly — that was the old bug (e.g.
+  // "Retinol" reported irritating never matched the "Retinoids" label here).
+  // Moving the label to avoided (rather than just dropping it) surfaces it in
+  // "Avoid Today" — a conservative category-level UI signal, not a claim that
+  // every ingredient in the family is unsafe.
+  if (irritatingCategories && irritatingCategories.size > 0) {
+    const stillPrioritized: string[] = [];
+    for (const label of prioritized) {
+      const category = categoryForLabel(label);
+      if (category && irritatingCategories.has(category)) {
+        const displayName = categoryDisplayName(category);
+        if (!avoided.includes(displayName)) avoided = [...avoided, displayName];
+      } else {
+        stillPrioritized.push(label);
+      }
+    }
+    prioritized = stillPrioritized;
   }
 
   const lowerSens = sensitivities.map((s) => s.toLowerCase());

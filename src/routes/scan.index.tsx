@@ -40,8 +40,16 @@ function Scan() {
   // should be able to go back to check-in — history-based since that's the
   // only entry point in this case.
   const goBack = fromOnboarding ? () => router.history.back() : undefined;
-  const { setAnalysis, symptoms, scheduleTomorrow, eventTiming, ingredientHistory, products } =
-    useAppStore();
+  const {
+    setAnalysis,
+    symptoms,
+    scheduleTomorrow,
+    eventTiming,
+    ingredientHistory,
+    irritatingCategories,
+    products,
+    irritatingIngredientNames,
+  } = useAppStore();
   const [scanning, setScanning] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +131,7 @@ function Scan() {
           scheduleTomorrow,
           eventTiming,
           shelfCategories: Array.from(new Set(products.map((p) => p.category))),
+          irritatingIngredients: irritatingIngredientNames,
         };
         const strategyRes = await fetch("/api/skin-strategy", {
           method: "POST",
@@ -152,6 +161,7 @@ function Scan() {
         scheduleTomorrow,
         eventTiming,
         ingredientHistory,
+        irritatingCategories,
       });
 
       // Persist once, then use the inserted row (generated id, created_at,

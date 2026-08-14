@@ -74,3 +74,19 @@ describe("getTodaysRecommendations — category diversity", () => {
     expect(result.length).toBeLessThanOrEqual(5);
   });
 });
+
+describe("getTodaysRecommendations — reported ingredient reactions", () => {
+  it("drops a product entirely if it contains an exact reported-irritating ingredient", () => {
+    const catalog: CatalogProduct[] = [
+      product(1, "Treatment", ["salicylic_acid"]),
+      product(2, "Cleanser", ["salicylic_acid"]),
+    ];
+    const result = getTodaysRecommendations(
+      catalog,
+      analysis({ acne: 20 }),
+      new Set(["ingredient salicylic_acid"]),
+    );
+    expect(result.map((p) => p.id)).not.toContain("1");
+    expect(result.map((p) => p.id)).not.toContain("2");
+  });
+});

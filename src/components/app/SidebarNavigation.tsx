@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/lib/appStore";
 import { deriveSkinType } from "@/lib/skinType";
+import logo from "@/assets/logo_bars_only_transparent.png";
 
 const items = [
   { to: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
@@ -60,9 +61,7 @@ export function SidebarNavigation() {
   return (
     <aside className="hidden w-[232px] shrink-0 flex-col border-r border-hairline bg-white lg:flex">
       <div className="flex items-center gap-2.5 px-5 pb-6 pt-7">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-light">
-          <FlaskConical size={18} className="text-brand" />
-        </span>
+        <img src={logo} alt="" className="h-11 w-11 object-contain" />
         <span className="text-[16.5px] font-bold tracking-tight text-ink">Skingredient</span>
       </div>
 

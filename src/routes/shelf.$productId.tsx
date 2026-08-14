@@ -6,6 +6,7 @@ import { MobileHeader } from "@/components/app/MobileHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { IngredientChip } from "@/components/app/IngredientChip";
 import { useAppStore } from "@/lib/appStore";
+import type { Reaction } from "@/lib/data/ingredientReactions";
 
 export const Route = createFileRoute("/shelf/$productId")({
   head: () => ({ meta: [{ title: "Product — Skingredient" }] }),
@@ -24,6 +25,8 @@ function ProductDetail() {
   } = useAppStore();
   const product = products.find((p) => p.id === productId);
   const [fav, setFav] = useState(false);
+  const [localReaction, setLocalReaction] = useState<string | null>(null);
+  const [savedIngredient, setSavedIngredient] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // products loads asynchronously (appStore fetches catalog/shelf/custom
@@ -53,10 +56,12 @@ function ProductDetail() {
     ingredientLibrary.map((entry) => [entry.inciName.toLowerCase(), entry.id]),
   );
 
-  // Derived from the persisted ingredientHistory (src/lib/appStore.tsx),
-  // not local-only state — otherwise this reset to unselected on every
-  // remount/refresh even after recordReaction had genuinely saved,
-  // making a real save look like it hadn't happened.
+  // Seeded from the persisted ingredientHistory (src/lib/appStore.tsx) so a
+  // remount/refresh doesn't show "unselected" for a reaction that was
+  // genuinely already saved — falls back to the first key ingredient's
+  // reaction as a reasonable default highlight. Local state then takes over
+  // once the user interacts in this session, since the multi-ingredient
+  // picker below can't be derived from a single persisted value.
   const REACTION_LABELS = {
     helpful: "Helpful",
     neutral: "Neutral",
@@ -64,8 +69,9 @@ function ProductDetail() {
     unknown: "Not sure yet",
   } as const;
   const firstIngredient = product.keyIngredients[0]?.toLowerCase();
-  const currentReactionType = firstIngredient ? ingredientHistory[firstIngredient] : undefined;
-  const reaction = currentReactionType ? REACTION_LABELS[currentReactionType] : null;
+  const persistedReactionType = firstIngredient ? ingredientHistory[firstIngredient] : undefined;
+  const persistedReaction = persistedReactionType ? REACTION_LABELS[persistedReactionType] : null;
+  const reaction = localReaction ?? persistedReaction;
 
   return (
     <AppShell
@@ -183,18 +189,24 @@ function ProductDetail() {
               <button
                 key={r}
                 onClick={() => {
-                  product.keyIngredients.forEach((i) =>
-                    recordReaction(
-                      i,
-                      r === "Helpful"
-                        ? "helpful"
-                        : r === "Neutral"
-                          ? "neutral"
-                          : r === "Irritating"
-                            ? "irritating"
-                            : "unknown",
-                    ),
-                  );
+                  setLocalReaction(r);
+                  setSavedIngredient(null);
+                  const reactionType: Reaction =
+                    r === "Helpful"
+                      ? "helpful"
+                      : r === "Neutral"
+                        ? "neutral"
+                        : r === "Irritating"
+                          ? "irritating"
+                          : "unknown";
+                  // A single-ingredient product has no ambiguity — record it
+                  // directly. Multi-ingredient products need the picker below
+                  // so we don't silently attribute the reaction to every
+                  // ingredient at once.
+                  if (product.keyIngredients.length === 1) {
+                    recordReaction(product.keyIngredients[0], reactionType);
+                    setSavedIngredient(product.keyIngredients[0]);
+                  }
                 }}
                 className={`rounded-xl border py-2.5 text-[13px] font-medium ${
                   reaction === r
@@ -206,6 +218,44 @@ function ProductDetail() {
               </button>
             ))}
           </div>
+
+          {reaction && product.keyIngredients.length > 1 && (
+            <div className="mt-4 border-t border-hairline pt-4">
+              <p className="text-[13px] font-medium text-ink">
+                Which ingredient do you think caused it?
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {product.keyIngredients.map((i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      const reactionType: Reaction =
+                        reaction === "Helpful"
+                          ? "helpful"
+                          : reaction === "Neutral"
+                            ? "neutral"
+                            : reaction === "Irritating"
+                              ? "irritating"
+                              : "unknown";
+                      recordReaction(i, reactionType);
+                      setSavedIngredient(i);
+                    }}
+                    className={`rounded-full border px-3.5 py-2 text-[13px] font-medium ${
+                      savedIngredient === i
+                        ? "border-brand bg-brand text-white"
+                        : "border-hairline bg-white text-ink"
+                    }`}
+                  >
+                    {i}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {savedIngredient && (
+            <p className="mt-3 text-[12.5px] text-ink-muted">Saved for {savedIngredient}.</p>
+          )}
         </section>
 
         <p className="mt-6 text-center text-[11px] text-ink-muted">

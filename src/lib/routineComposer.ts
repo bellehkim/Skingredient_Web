@@ -100,18 +100,37 @@ function containsAvoidedCategory(
   return false;
 }
 
+/** Exact-ingredient exclusion (src/lib/data/ingredientReactions.ts) — a
+ * product containing an ingredient the user has reported as irritating is
+ * never placed into the routine, regardless of category. Same custom-product
+ * caveat as containsAvoidedCategory: no ingredient data to check. */
+function containsIrritatingIngredient(
+  product: Product,
+  irritatingIngredients: Set<string>,
+  catalog: CatalogProduct[],
+): boolean {
+  if (irritatingIngredients.size === 0 || isCustomProduct(product)) return false;
+  const row = findCatalogRow(catalog, product.id);
+  if (!row) return false;
+  return row.product_ingredients.some((pi) =>
+    irritatingIngredients.has(pi.ingredients.inci_name.toLowerCase()),
+  );
+}
+
 function pickForSlot(
   categories: string[],
   period: RoutinePeriod,
   shelfProducts: Product[],
   recommendedPool: Product[],
   avoidedCategories: Set<string>,
+  irritatingIngredients: Set<string>,
   catalog: CatalogProduct[],
 ): { product: Product; source: RoutineSource } | null {
   const eligible = (product: Product) =>
     categories.includes(product.category) &&
     isAllowedInPeriod(product, period, catalog) &&
-    !containsAvoidedCategory(product, avoidedCategories, catalog);
+    !containsAvoidedCategory(product, avoidedCategories, catalog) &&
+    !containsIrritatingIngredient(product, irritatingIngredients, catalog);
 
   const shelfMatch = shelfProducts.find(eligible);
   if (shelfMatch) return { product: shelfMatch, source: "shelf" };
@@ -128,6 +147,7 @@ function buildPeriod(
   shelfProducts: Product[],
   recommendedPool: Product[],
   avoidedCategories: Set<string>,
+  irritatingIngredients: Set<string>,
   catalog: CatalogProduct[],
 ): RoutineSlot[] {
   return slots.map(({ label, categories }) => {
@@ -137,6 +157,7 @@ function buildPeriod(
       shelfProducts,
       recommendedPool,
       avoidedCategories,
+      irritatingIngredients,
       catalog,
     );
     return { label, product: picked?.product ?? null, source: picked?.source ?? null };
@@ -157,6 +178,7 @@ export function composeRoutine(
   shelfProducts: Product[],
   recommendedProducts: Product[],
   recommendation: DailyRecommendation,
+  irritatingIngredients: Set<string> = new Set(),
 ): Routine {
   const avoidedCategories = labelsToCategories(recommendation.avoidedIngredients);
 
@@ -166,7 +188,23 @@ export function composeRoutine(
     .sort((a, b) => (a.status === "use-today" ? 0 : 1) - (b.status === "use-today" ? 0 : 1));
 
   return {
-    am: buildPeriod(AM_SLOTS, "am", shelfProducts, recommendedPool, avoidedCategories, catalog),
-    pm: buildPeriod(PM_SLOTS, "pm", shelfProducts, recommendedPool, avoidedCategories, catalog),
+    am: buildPeriod(
+      AM_SLOTS,
+      "am",
+      shelfProducts,
+      recommendedPool,
+      avoidedCategories,
+      irritatingIngredients,
+      catalog,
+    ),
+    pm: buildPeriod(
+      PM_SLOTS,
+      "pm",
+      shelfProducts,
+      recommendedPool,
+      avoidedCategories,
+      irritatingIngredients,
+      catalog,
+    ),
   };
 }

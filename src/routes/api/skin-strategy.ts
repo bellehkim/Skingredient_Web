@@ -40,7 +40,10 @@ function isValidBody(body: unknown): body is SkinStrategyInput {
     typeof b.eventTiming === "string" &&
     EVENT_TIMINGS.includes(b.eventTiming as EventTiming) &&
     Array.isArray(b.shelfCategories) &&
-    b.shelfCategories.every((c) => typeof c === "string")
+    b.shelfCategories.every((c) => typeof c === "string") &&
+    (b.irritatingIngredients === undefined ||
+      (Array.isArray(b.irritatingIngredients) &&
+        b.irritatingIngredients.every((c) => typeof c === "string")))
   );
 }
 

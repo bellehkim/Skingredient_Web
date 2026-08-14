@@ -35,7 +35,7 @@ You must NOT:
 - name specific products or brands
 - name specific ingredients (e.g. do not say "niacinamide", "retinol", "salicylic acid")
 - describe or generate a step-by-step routine
-- diagnose any skin condition or disease
+- diagnose any skin condition or disease, or diagnose an allergy
 - make medical claims or give medical advice
 - contradict the direction implied by the provided condition/concerns (e.g. do not
   suggest introducing strong new actives if concerns indicate irritation or low hydration)
@@ -50,7 +50,13 @@ WHEN it is (e.g. "You have an important event tomorrow..." or "With travel comin
 up within the next few days...") before describing today's focus — something
 tomorrow deserves a stronger tone than something a week out. If Shelf context is
 provided, you may note that the user already owns relevant product categories,
-but never recommend a specific one.`;
+but never recommend a specific one.
+
+If previously reported ingredient reactions are provided, you may naturally note
+that today's strategy accounts for them (e.g. "Because you've previously reported
+irritation with retinol, today's strategy keeps your routine gentler."). Treat
+this only as one user-reported data point about one specific ingredient — never
+call it an allergy or a sensitivity to a broader ingredient family.`;
 
 export interface SkinStrategyInput {
   scores: Pick<
@@ -66,6 +72,11 @@ export interface SkinStrategyInput {
    * names/brands. Omit or pass an empty array to leave Shelf context out of
    * the prompt entirely when it wouldn't materially help. */
   shelfCategories: string[];
+  /** Exact inci_name of every ingredient the user has previously reported as
+   * "irritating" (src/lib/data/ingredientReactions.ts) — concise structured
+   * context only, e.g. ["Retinol"]. Omit or pass an empty array when there
+   * are none. */
+  irritatingIngredients?: string[];
 }
 
 /** Exported for testing — the prompt-building step is pure and deterministic;
@@ -79,6 +90,7 @@ export function buildPrompt(input: SkinStrategyInput): string {
     scheduleTomorrow,
     eventTiming,
     shelfCategories,
+    irritatingIngredients,
   } = input;
 
   const lines = [
@@ -93,6 +105,11 @@ export function buildPrompt(input: SkinStrategyInput): string {
 
   if (shelfCategories.length > 0) {
     lines.push(`User already owns products in these categories: ${shelfCategories.join(", ")}.`);
+  }
+
+  if (irritatingIngredients && irritatingIngredients.length > 0) {
+    const reported = irritatingIngredients.map((name) => `- ${name}: irritation`).join("\n");
+    lines.push(`Previously reported ingredient reactions:\n${reported}`);
   }
 
   return lines.join("\n");
