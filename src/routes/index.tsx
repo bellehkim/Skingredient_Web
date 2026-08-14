@@ -258,7 +258,7 @@ function Home() {
 
             {/* Quick actions */}
             <div className="mt-6 grid grid-cols-4 gap-2 lg:mt-0 lg:grid-cols-2">
-              <QuickAction to="/scan/check-in" label="Scan skin" Icon={ScanFace} tint="brand" />
+              <QuickAction to="/scan" label="Scan skin" Icon={ScanFace} tint="brand" />
               <QuickAction to="/shelf/add" label="Add product" Icon={Plus} tint="aqua" />
               <QuickAction to="/ingredients" label="Ingredients" Icon={FlaskConical} tint="sage" />
               <QuickAction to="/routine" label="Routine" Icon={CalendarHeart} tint="sun" />
