@@ -114,6 +114,36 @@ function Insights() {
       }));
   }, [history, metric]);
 
+  // "This week's summary" card: real data only, not a static message. Reuses
+  // the same 7-day window as the trend chart. Needs at least 2 analyses in
+  // that window to compare a start point against an end point; otherwise the
+  // card doesn't render at all (same "not enough data yet" gating the chart
+  // above already uses via chartData.length < 2).
+  const weeklySummary = useMemo(() => {
+    if (!history) return null;
+    const cutoff = Date.now() - TREND_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    const window = history
+      .filter((a) => new Date(a.analyzedAt).getTime() >= cutoff)
+      .slice()
+      .reverse(); // oldest first
+    if (window.length < 2) return null;
+    const earliest = window[0];
+    const latest = window[window.length - 1];
+    // All fields are "higher = healthier" (src/lib/overallCondition.ts
+    // convention), so the metric with the largest positive delta is the
+    // one that improved the most this week.
+    const deltas = (Object.keys(TREND_METRICS) as TrendMetricKey[]).map((key) => ({
+      key,
+      label: TREND_METRICS[key].label,
+      delta: TREND_METRICS[key].accessor(latest) - TREND_METRICS[key].accessor(earliest),
+    }));
+    const best = deltas.reduce((a, b) => (b.delta > a.delta ? b : a));
+    if (best.delta > 0) {
+      return `${best.label} is improving. Keep focusing on barrier care and hydration.`;
+    }
+    return "Your skin has stayed steady this week. Keep up your routine.";
+  }, [history]);
+
   return (
     <AppShell
       title="Insights"
@@ -244,22 +274,24 @@ function Insights() {
               )}
             </div>
 
-            <section
-              className="relative mt-4 overflow-hidden rounded-3xl p-5 lg:p-7"
-              style={{ background: "linear-gradient(120deg, #EEEAFE 0%, #F6F3FF 100%)" }}
-            >
-              <div className="absolute -right-6 -bottom-6 h-32 w-32 rounded-full bg-white/50 blur-2xl" />
-              <p className="text-[15px] font-semibold text-ink">This week's summary 🎉</p>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
-                Redness is improving. Keep focusing on barrier care and hydration.
-              </p>
-              <Link
-                to="/insights"
-                className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-brand"
+            {weeklySummary && (
+              <section
+                className="relative mt-4 overflow-hidden rounded-3xl p-5 lg:p-7"
+                style={{ background: "linear-gradient(120deg, #EEEAFE 0%, #F6F3FF 100%)" }}
               >
-                <Calendar size={13} /> Compare with last week
-              </Link>
-            </section>
+                <div className="absolute -right-6 -bottom-6 h-32 w-32 rounded-full bg-white/50 blur-2xl" />
+                <p className="text-[15px] font-semibold text-ink">This week's summary 🎉</p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-ink-muted">
+                  {weeklySummary}
+                </p>
+                <Link
+                  to="/insights"
+                  className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-brand"
+                >
+                  <Calendar size={13} /> Compare with last week
+                </Link>
+              </section>
+            )}
           </>
         )}
 

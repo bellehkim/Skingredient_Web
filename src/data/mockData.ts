@@ -4,7 +4,7 @@ import centellaImg from "@/assets/product-centella.jpg";
 import ahabhaImg from "@/assets/product-ahabha.jpg";
 
 export const mockUser = {
-  name: "Belle",
+  name: "Jane",
   streak: 12,
   // Hidden for the MVP alongside the Profile page's Skin Goals card (see
   // SHOW_SKIN_GOALS in src/routes/profile.tsx) — not persisted/editable yet.

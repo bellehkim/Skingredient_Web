@@ -14,6 +14,7 @@ import {
   Ban,
   CheckCircle2,
   Package,
+  Compass,
 } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { useAppStore } from "@/lib/appStore";
@@ -166,8 +167,8 @@ function Home() {
                   }}
                 >
                   <div className="absolute -right-6 -top-8 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
-                  <div className="absolute right-6 top-6 opacity-70">
-                    <Leaf />
+                  <div className="absolute right-6 top-6 text-white/40">
+                    <Compass size={34} strokeWidth={1.5} />
                   </div>
                   <p className="text-[11px] font-semibold tracking-[0.18em] text-white/90">
                     TODAY'S SKIN DIRECTION
@@ -246,8 +247,8 @@ function Home() {
                   }}
                 >
                   <div className="absolute -right-6 -top-8 h-32 w-32 rounded-full bg-white/15 blur-2xl" />
-                  <div className="absolute right-6 top-6 opacity-70">
-                    <Leaf />
+                  <div className="absolute right-6 top-6 text-white/40">
+                    <Compass size={34} strokeWidth={1.5} />
                   </div>
                   <p className="text-[11px] font-semibold tracking-[0.18em] text-white/90">
                     TODAY'S SKIN DIRECTION
@@ -382,9 +383,9 @@ function DailyRoutineStatus({
   }
 
   const title = checkInDone
-    ? "Check-in done — scan next"
+    ? "Check-in done · Scan next"
     : scanDone
-      ? "Scan done — check-in next"
+      ? "Scan done · Check-in next"
       : "Check-in & scan pending";
 
   return (
@@ -435,6 +436,8 @@ function QuickAction({
   );
 }
 
+// Kept for potential future reuse elsewhere on the page — no longer used in
+// the "Today's Skin Direction" card, which now uses the Compass icon instead.
 function Leaf() {
   return (
     <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
