@@ -73,16 +73,39 @@ async function uploadImage(apiKey: string, image: Blob): Promise<string> {
   const file = initData.data.files[0];
   const uploadReq = file.requests[0];
 
-  const putRes = await fetch(uploadReq.url, {
-    method: uploadReq.method,
-    headers: uploadReq.headers,
-    body: image,
-  });
+  const putRes = await putWithRetry(uploadReq.method, uploadReq.url, uploadReq.headers, image);
   if (!putRes.ok) {
     throw new Error(`YouCam image upload failed (${putRes.status})`);
   }
 
   return file.file_id;
+}
+
+/**
+ * Retries only on a network-level failure (fetch throwing, e.g. the
+ * "SocketError: other side closed" seen mid-upload of a several-MB photo to
+ * YouCam's presigned URL) — never on an HTTP error response, which the
+ * caller handles by its status code. Safe to retry: bytesRead 0 on those
+ * failures confirms the presigned URL never received a complete request, so
+ * a fresh PUT to the same URL is a clean retry, not a duplicate upload.
+ */
+async function putWithRetry(
+  method: string,
+  url: string,
+  headers: Record<string, string>,
+  body: Blob,
+  attempts = 3,
+): Promise<Response> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await fetch(url, { method, headers, body });
+    } catch (err) {
+      if (attempt >= attempts) {
+        throw new Error("Couldn't upload your photo. Check your connection and try again.");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    }
+  }
 }
 
 async function createTask(apiKey: string, fileId: string): Promise<string> {
