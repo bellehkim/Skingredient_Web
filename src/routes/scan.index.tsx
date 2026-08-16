@@ -9,6 +9,7 @@ import { useAppStore } from "@/lib/appStore";
 import { createAnalysis } from "@/lib/data/analyses";
 import { generateRecommendation } from "@/lib/recommendationEngine";
 import { generateAndPersistSkinStrategy } from "@/lib/skinStrategyFlow";
+import { preprocessImageForAnalysis } from "@/lib/imagePreprocessing";
 
 const scanSearchSchema = z.object({
   // Set only when arriving straight from the onboarding survey (see
@@ -109,7 +110,13 @@ function Scan() {
     setScanning(true);
     setStep(0);
     try {
-      const { youcamRaw, ...result } = await skinAnalysisService.analyze(image);
+      // Conservative resize (only if unnecessarily large, never upscaled —
+      // see src/lib/imagePreprocessing.ts) before the one upload attempt.
+      // Runs once here, so the server's own retry-on-network-failure
+      // (uploadImage's putWithRetry in src/routes/api/skin-analysis.ts)
+      // reuses this exact same processed blob rather than reprocessing.
+      const processedImage = await preprocessImageForAnalysis(image);
+      const { youcamRaw, ...result } = await skinAnalysisService.analyze(processedImage);
 
       // A completed scan always produces a report — never gated on today's
       // Daily Check-in. AI Skin Strategy is the one part that IS gated: it
