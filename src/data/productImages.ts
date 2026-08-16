@@ -26,4 +26,5 @@ export const PRODUCT_IMAGES: Record<string, string> = {
   "16": "/product-images/16-paulas-choice-2-bha-liquid.png",
   "17": "/product-images/17-pyunkang-yul-essence-toner.jpg",
   "18": "/product-images/18-skinfix-barrier-nutrient-toning-essence.png",
+  "19": "/product-images/19-cosrx-advanced-snail-92-all-in-one-cream.jpg",
 };
