@@ -1,4 +1,5 @@
--- Persists the 5-step onboarding survey (src/routes/onboarding.tsx) as a
+-- Persists the onboarding survey (src/routes/onboarding.tsx, step count may
+-- change independently of this schema) as a
 -- single jsonb blob on the profile row, instead of only living in
 -- client-side appStore state (which was lost on refresh and never written
 -- anywhere). Deliberately a single column, not new tables: onboarding
