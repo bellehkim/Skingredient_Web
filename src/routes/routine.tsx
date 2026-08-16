@@ -11,7 +11,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/appStore";
-import type { RoutineSlot } from "@/lib/routineComposer";
+import type { RoutineSlot, RoutineSource } from "@/lib/routineComposer";
 import { Sun, Moon, Lightbulb } from "lucide-react";
 
 const PLANNED_FEATURES = [
@@ -39,6 +39,12 @@ export const Route = createFileRoute("/routine")({
 });
 
 const WEEKDAY_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+const SOURCE_BADGE: Record<RoutineSource, { label: string; cls: string }> = {
+  manual: { label: "Added by you", cls: "bg-brand text-white" },
+  shelf: { label: "On your shelf", cls: "bg-brand/10 text-brand" },
+  recommended: { label: "Recommended", cls: "bg-surface-muted text-ink-muted" },
+};
 
 /** Mon-Sun strip for the week containing `today`, with today flagged active
  * — no hardcoded dates, so this stays correct on any date it's rendered. */
@@ -213,13 +219,9 @@ function RoutineSection({
                 {slot.product.name}
               </p>
               <span
-                className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
-                  slot.source === "shelf"
-                    ? "bg-brand/10 text-brand"
-                    : "bg-surface-muted text-ink-muted"
-                }`}
+                className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${SOURCE_BADGE[slot.source ?? "recommended"].cls}`}
               >
-                {slot.source === "shelf" ? "On your shelf" : "Recommended"}
+                {SOURCE_BADGE[slot.source ?? "recommended"].label}
               </span>
             </div>
           ))}

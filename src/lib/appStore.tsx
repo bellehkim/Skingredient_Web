@@ -37,6 +37,13 @@ import {
   getCheckInDates,
   type TodaysCheckIn,
 } from "./data/checkins";
+import {
+  getRoutineItems,
+  addRoutineItems,
+  removeRoutineItem as removeRoutineItemRow,
+  type RoutineItem,
+  type RoutineTimeOfDay,
+} from "./data/routineItems";
 import { generateAndPersistSkinStrategy } from "./skinStrategyFlow";
 import { calculateCheckInStreak } from "./streak";
 import { wasDemoModeActiveAtPageLoad } from "./demoMode";
@@ -82,6 +89,12 @@ interface AppState {
    * must check this first, so a real analysis doesn't briefly flash an
    * empty state before it loads. */
   analysisLoading: boolean;
+  /** Raw catalog rows with ingredient/functional_category data — exposed for
+   * the few places that need real ingredient data a plain Product can't
+   * carry (e.g. src/routes/shelf.$productId.index.tsx's Add-to-routine
+   * AM/PM strong-active warning, via routineComposer.ts's isStrongActive).
+   * Most UI should use `products`/`recommendedProducts` instead. */
+  catalog: CatalogProduct[];
   /** Full catalog, annotated with today's status — for display only. Saving
    * is what puts a product on the shelf; this list on its own never does. */
   recommendedProducts: Product[];
@@ -204,6 +217,18 @@ interface AppState {
    * Only meaningful for a product already reported irritating — never
    * changes reaction_type, never touches ingredient_reactions. */
   setProductReactionExcluded: (productId: string, excluded: boolean) => void;
+  /** Every manually-added routine placement (src/lib/data/routineItems.ts)
+   * — the highest-priority source routineComposer.ts's `routine` above is
+   * built from. Exposed raw so the Shelf product page can show "In
+   * routine: Morning" etc. for this exact product. */
+  routineItems: RoutineItem[];
+  /** Adds this product to one or both times of day (["am"], ["pm"], or
+   * ["am","pm"] for "Both"). Idempotent per period. Never touches
+   * shelf_items/custom_products — Routine and My Shelf are separate. */
+  addToRoutine: (productId: string, timesOfDay: RoutineTimeOfDay[]) => void;
+  /** Removes just this one time-of-day placement, leaving the other (if
+   * any) and the underlying shelf product untouched. */
+  removeFromRoutine: (productId: string, timeOfDay: RoutineTimeOfDay) => void;
   /**
    * Persists today's Daily Check-in (upsert — resubmitting today updates
    * today's row, never a duplicate). If today's scan already exists, this
@@ -236,6 +261,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [checkInDates, setCheckInDates] = useState<string[]>([]);
   const [reactionsData, setReactionsData] = useState(EMPTY_INGREDIENT_REACTIONS);
   const [productReactionsData, setProductReactionsData] = useState(EMPTY_PRODUCT_REACTIONS);
+  const [routineItems, setRoutineItems] = useState<RoutineItem[]>([]);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingAnswers, setOnboardingAnswers] = useState<string[][]>([]);
@@ -326,6 +352,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     getCheckInDates()
       .then(setCheckInDates)
       .catch((err) => console.error("Failed to load check-in dates", err));
+
+    getRoutineItems()
+      .then(setRoutineItems)
+      .catch((err) => console.error("Failed to load routine items", err));
   }, []);
 
   // Derived from the persisted daily_checkins row, not local/localStorage
@@ -417,6 +447,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         recommendation,
         reactionsData.irritatingIngredients,
         productReactionsData.excludedProductIds,
+        routineItems,
       ),
     [
       catalog,
@@ -426,6 +457,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       todaysAnalysis,
       reactionsData,
       productReactionsData,
+      routineItems,
     ],
   );
 
@@ -433,11 +465,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     user: mockUser,
     analysis,
     analysisLoading,
+    catalog,
     recommendedProducts,
     todaysPicks,
     products,
     productsLoading,
     routine,
+    routineItems,
     ingredientLibrary,
     symptoms,
     scheduleTomorrow,
@@ -595,6 +629,39 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         getProductReactions()
           .then(setProductReactionsData)
           .catch((refetchErr) => console.error("Failed to reload product reactions", refetchErr));
+      });
+    },
+    // Optimistic add, same pattern as recordProductReaction — refetch on
+    // failure so local state can't drift from what's actually persisted.
+    addToRoutine: (productId, timesOfDay) => {
+      setRoutineItems((prev) => {
+        const next = prev.slice();
+        for (const timeOfDay of timesOfDay) {
+          if (!next.some((i) => i.productId === productId && i.timeOfDay === timeOfDay)) {
+            next.push({ productId, timeOfDay });
+          }
+        }
+        return next;
+      });
+      addRoutineItems(productId, timesOfDay)
+        .then(() => getRoutineItems())
+        .then(setRoutineItems)
+        .catch((err) => {
+          console.error("Failed to add routine item", err);
+          getRoutineItems()
+            .then(setRoutineItems)
+            .catch((refetchErr) => console.error("Failed to reload routine items", refetchErr));
+        });
+    },
+    removeFromRoutine: (productId, timeOfDay) => {
+      setRoutineItems((prev) =>
+        prev.filter((i) => !(i.productId === productId && i.timeOfDay === timeOfDay)),
+      );
+      removeRoutineItemRow(productId, timeOfDay).catch((err) => {
+        console.error("Failed to remove routine item", err);
+        getRoutineItems()
+          .then(setRoutineItems)
+          .catch((refetchErr) => console.error("Failed to reload routine items", refetchErr));
       });
     },
     submitTodaysCheckIn: async (input) => {

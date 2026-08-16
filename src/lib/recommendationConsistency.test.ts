@@ -39,6 +39,7 @@ function catalog(entries: [number, string, string, string][]): CatalogProduct[] 
       {
         ingredients: {
           inci_name: inciName,
+          common_name: null,
           ingredient_functions: [{ functional_category: functionalCategory }],
         },
       },

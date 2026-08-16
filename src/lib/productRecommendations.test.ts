@@ -17,6 +17,7 @@ function product(
     product_ingredients: functionalCategories.map((fc) => ({
       ingredients: {
         inci_name: `Ingredient ${fc}`,
+        common_name: null,
         ingredient_functions: [{ functional_category: fc }],
       },
     })),

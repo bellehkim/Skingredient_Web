@@ -1,5 +1,10 @@
 import type { CatalogProduct } from "./data/catalog";
-import { CATEGORY_COLORS, categoryForLabel, labelsToCategories } from "./productMatching";
+import {
+  CATEGORY_COLORS,
+  categoryForLabel,
+  labelsToCategories,
+  sortProductsByRoutineStep,
+} from "./productMatching";
 import { STRONG_ACTIVES } from "./scheduleAdjustments";
 import type { DailyRecommendation, Product } from "./types";
 
@@ -18,21 +23,6 @@ const STRONG_ACTIVE_CATEGORIES = new Set(
     .map((label) => categoryForLabel(label))
     .filter((c): c is string => Boolean(c)),
 );
-
-// Display-only skincare-step order for the final "Recommended for you" list
-// — applied strictly after selection/scoring/tie-breaking below have
-// already picked the winning product per category, so it can never affect
-// which product wins a category. A category simply isn't in the array if
-// nothing matched it, so sorting against this order never inserts a
-// placeholder.
-const CATEGORY_DISPLAY_ORDER = [
-  "Cleanser",
-  "Toner/Essence",
-  "Serum",
-  "Moisturizer",
-  "Treatment",
-  "Sunscreen",
-];
 
 // Maintenance mode (recommendationEngine.ts's healthy fallback) prioritizes
 // gentle barrier/hydration ingredients only — it deliberately never lists
@@ -191,19 +181,15 @@ export function getTodaysRecommendations(
     .filter((m) => m.matchedCategories.size > 0)
     .sort((a, b) => b.matchedCategories.size - a.matchedCategories.size);
 
-  const matched = selectDiverseTopMatches(ranked, MAX_RECOMMENDATIONS);
-
   // Selection is fully decided above — this only reorders the already-final
-  // list for display, into the fixed skincare-step order. A category not in
-  // CATEGORY_DISPLAY_ORDER (shouldn't happen for the real catalog, but not
-  // assumed) sorts after every named step rather than throwing.
-  matched.sort((a, b) => {
-    const aIndex = CATEGORY_DISPLAY_ORDER.indexOf(a.product.category);
-    const bIndex = CATEGORY_DISPLAY_ORDER.indexOf(b.product.category);
-    const aRank = aIndex === -1 ? CATEGORY_DISPLAY_ORDER.length : aIndex;
-    const bRank = bIndex === -1 ? CATEGORY_DISPLAY_ORDER.length : bIndex;
-    return aRank - bRank;
-  });
+  // list for display, into the shared canonical skincare-step order
+  // (src/lib/productMatching.ts's PRODUCT_STEP_ORDER, the same ordering
+  // Routine Planner's AM/PM slots use), so it can never affect which
+  // product won a category.
+  const matched = sortProductsByRoutineStep(
+    selectDiverseTopMatches(ranked, MAX_RECOMMENDATIONS),
+    (m) => m.product.category,
+  );
 
   return matched.map(({ product, matchedCategories, matchedIngredientNames }) => {
     const matchedLabels = recommendation.prioritizedIngredients.filter((label) => {
