@@ -1,14 +1,11 @@
 /**
  * product_id -> local demo photo path (see public/product-images/).
  *
- * Demo-only: these are real brand product photos, downloaded for local
- * presentation use and gitignored (public/product-images/) rather than
- * committed — this file itself is just filename strings, safe to commit.
- * On any clone/deploy without that folder, the referenced files simply
- * 404 — buildProductsFromCatalog() only sets Product.imageUrl when the
- * catalog id has an entry here, and every `<img>` using it falls back to
- * the existing placeholder icon on error, so this degrades gracefully
- * rather than showing a broken-image icon.
+ * Demo-only: these are real brand product photos, committed for demo
+ * presentation purposes. buildProductsFromCatalog() only sets
+ * Product.imageUrl when the catalog id has an entry here, and every
+ * `<img>` using it falls back to the existing placeholder icon on error,
+ * so a missing/renamed file still degrades gracefully.
  */
 export const PRODUCT_IMAGES: Record<string, string> = {
   "1": "/product-images/1-cerave-hydrating-facial-cleanser.jpg",
