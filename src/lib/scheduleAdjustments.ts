@@ -36,8 +36,11 @@ interface AdjustableRecommendation {
 }
 
 // Ingredients recommendationEngine.ts already treats as "strong actives" —
-// reused here rather than a second definition of the same concept.
-const STRONG_ACTIVES = new Set([
+// reused here rather than a second definition of the same concept. Also
+// reused by src/lib/productRecommendations.ts for strong-active duplicate
+// avoidance across recommended products — one shared vocabulary, not a
+// second inconsistent list.
+export const STRONG_ACTIVES = new Set([
   "Retinoids",
   "AHA",
   "BHA",

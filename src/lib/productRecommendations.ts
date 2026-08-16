@@ -1,8 +1,23 @@
 import type { CatalogProduct } from "./data/catalog";
 import { CATEGORY_COLORS, categoryForLabel, labelsToCategories } from "./productMatching";
+import { STRONG_ACTIVES } from "./scheduleAdjustments";
 import type { DailyRecommendation, Product } from "./types";
 
-const MAX_RECOMMENDATIONS = 5;
+// One recommendation per supported product category (Cleanser, Moisturizer,
+// Sunscreen, Serum, Treatment, Toner/Essence) when a valid match exists for
+// each — selectDiverseTopMatches below never invents a category, so this is
+// a ceiling, not a target count.
+const MAX_RECOMMENDATIONS = 6;
+
+// Same vocabulary scheduleAdjustments.ts uses for "don't stack strong actives
+// before an event" — reused here (not a second list) so "strong active"
+// means the same thing everywhere. Converted from labels to
+// functional_category once, at module load.
+const STRONG_ACTIVE_CATEGORIES = new Set(
+  Array.from(STRONG_ACTIVES)
+    .map((label) => categoryForLabel(label))
+    .filter((c): c is string => Boolean(c)),
+);
 
 // Maintenance mode (recommendationEngine.ts's healthy fallback) prioritizes
 // gentle barrier/hydration ingredients only — it deliberately never lists
@@ -35,18 +50,70 @@ type RankedMatch = {
 /**
  * Caps the ranked list at one product per product.category (Cleanser,
  * Serum, Moisturizer, Treatment, Sunscreen, Toner/Essence), keeping the
- * best-ranked (first) entry per category and otherwise preserving rank
- * order. A category simply doesn't appear if nothing ranked matched it —
- * this never invents a category to hit a count.
+ * best-ranked entry per category and otherwise preserving rank order. A
+ * category simply doesn't appear if nothing ranked matched it — this never
+ * invents a category to hit a count.
+ *
+ * Diversity tie-breaks: relevance (matchedCategories.size) is always the
+ * primary and only real ranking signal — a lower-scoring product can never
+ * win a category over a higher-scoring one. But `ranked` is a stable sort,
+ * so among several candidates tied at a category's top score, the winner
+ * used to always be whichever happened to come first in catalog/seed order
+ * — which, for this catalog, systematically favored the same handful of
+ * brands (see productRecommendations investigation). Now, only within that
+ * same-score tie, preference goes in this order:
+ *
+ *   1. a brand not already selected AND no overlap with a strong active
+ *      (STRONG_ACTIVE_CATEGORIES) already used by an earlier pick
+ *   2. a brand not already selected (active overlap allowed)
+ *   3. no strong-active overlap (brand repeat allowed)
+ *   4. the original catalog-order winner, unchanged
+ *
+ * Supportive ingredients (Niacinamide, Ceramides, Panthenol, Glycerin,
+ * Hyaluronic Acid, etc.) are never restricted this way — only categories in
+ * STRONG_ACTIVE_CATEGORIES count as "already used". No brand, country,
+ * region, or specific active is ever named in code — this only tracks
+ * whichever brand strings and functional_category values appear in the
+ * catalog data.
  */
 function selectDiverseTopMatches(ranked: RankedMatch[], max: number): RankedMatch[] {
   const seenCategories = new Set<string>();
+  const selectedBrands = new Set<string>();
+  const usedStrongActiveCategories = new Set<string>();
   const diverse: RankedMatch[] = [];
 
+  const overlapsUsedStrongActive = (m: RankedMatch) =>
+    Array.from(m.matchedCategories).some(
+      (c) => STRONG_ACTIVE_CATEGORIES.has(c) && usedStrongActiveCategories.has(c),
+    );
+
   for (const match of ranked) {
-    if (seenCategories.has(match.product.category)) continue;
-    seenCategories.add(match.product.category);
-    diverse.push(match);
+    const category = match.product.category;
+    if (seenCategories.has(category)) continue;
+    seenCategories.add(category);
+
+    // `match` is already this category's top-scoring candidate (ranked is
+    // sorted by score descending, so the first time a category is seen is
+    // necessarily its best score). Gather every candidate tied at that same
+    // score, in their existing relative order.
+    const topScore = match.matchedCategories.size;
+    const tiedAtTopScore = ranked.filter(
+      (m) => m.product.category === category && m.matchedCategories.size === topScore,
+    );
+
+    const winner =
+      tiedAtTopScore.find(
+        (m) => !selectedBrands.has(m.product.brand) && !overlapsUsedStrongActive(m),
+      ) ??
+      tiedAtTopScore.find((m) => !selectedBrands.has(m.product.brand)) ??
+      tiedAtTopScore.find((m) => !overlapsUsedStrongActive(m)) ??
+      tiedAtTopScore[0];
+
+    selectedBrands.add(winner.product.brand);
+    for (const c of winner.matchedCategories) {
+      if (STRONG_ACTIVE_CATEGORIES.has(c)) usedStrongActiveCategories.add(c);
+    }
+    diverse.push(winner);
     if (diverse.length >= max) break;
   }
 
