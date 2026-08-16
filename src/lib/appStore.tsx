@@ -151,6 +151,20 @@ interface AppState {
   onboardingAnswers: string[][];
   setOnboardingStep: (step: number) => void;
   setOnboardingAnswers: (answers: string[][]) => void;
+  /** In-progress Daily Check-in form answers (src/routes/scan.check-in.tsx) —
+   * same reason as onboardingStep/onboardingAnswers above: check-in is
+   * reachable from /scan (Continue to skin scan -> back), and without this
+   * the form silently reset to blank on return, even after already
+   * submitting once today. "Did you try anything new?" in particular has
+   * nowhere else to live — it's never sent to submitTodaysCheckIn at all. */
+  checkInDraftFeel: string[];
+  checkInDraftTried: string[];
+  checkInDraftWhat: string | null;
+  checkInDraftTiming: string | null;
+  setCheckInDraftFeel: (v: string[]) => void;
+  setCheckInDraftTried: (v: string[]) => void;
+  setCheckInDraftWhat: (v: string | null) => void;
+  setCheckInDraftTiming: (v: string | null) => void;
   setAnalysis: (a: SkinAnalysisResult) => void;
   updateProductStatus: (id: string, status: ProductStatus) => void;
   addToShelf: (productId: string) => void;
@@ -224,6 +238,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingAnswers, setOnboardingAnswers] = useState<string[][]>([]);
+  const [checkInDraftFeel, setCheckInDraftFeel] = useState<string[]>([]);
+  const [checkInDraftTried, setCheckInDraftTried] = useState<string[]>([]);
+  const [checkInDraftWhat, setCheckInDraftWhat] = useState<string | null>(null);
+  const [checkInDraftTiming, setCheckInDraftTiming] = useState<string | null>(null);
   const [productsLoading, setProductsLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(true);
 
@@ -410,6 +428,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     onboardingAnswers,
     setOnboardingStep,
     setOnboardingAnswers,
+    checkInDraftFeel,
+    checkInDraftTried,
+    checkInDraftWhat,
+    checkInDraftTiming,
+    setCheckInDraftFeel,
+    setCheckInDraftTried,
+    setCheckInDraftWhat,
+    setCheckInDraftTiming,
     setAnalysis,
     updateProductStatus: (id, status) => setStatusOverrides((prev) => ({ ...prev, [id]: status })),
     addToShelf: (productId) => {

@@ -50,13 +50,21 @@ function CheckIn() {
   // back destination is correct for all three, so back retraces actual
   // navigation history instead (see MobileHeader/DesktopTopBar's onBack).
   const goBack = () => router.history.back();
-  const { submitTodaysCheckIn, scanCompletedToday } = useAppStore();
-  const [selFeel, setSelFeel] = useState<string[]>([]);
-  const [selTried, setSelTried] = useState<string[]>([]);
-  // Single-select — one event type/timing, not several combined — unlike the
-  // multi-select feelings/tried chips above.
-  const [selWhat, setSelWhat] = useState<string | null>(null);
-  const [selTiming, setSelTiming] = useState<string | null>(null);
+  const {
+    submitTodaysCheckIn,
+    scanCompletedToday,
+    // Lifted into the store (rather than local useState) so navigating away
+    // mid check-in (e.g. Continue to skin scan -> back) and returning shows
+    // the same answers instead of a blank form — see appStore.tsx.
+    checkInDraftFeel: selFeel,
+    checkInDraftTried: selTried,
+    checkInDraftWhat: selWhat,
+    checkInDraftTiming: selTiming,
+    setCheckInDraftFeel: setSelFeel,
+    setCheckInDraftTried: setSelTried,
+    setCheckInDraftWhat: setSelWhat,
+    setCheckInDraftTiming: setSelTiming,
+  } = useAppStore();
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const needsTiming = selWhat !== null && selWhat !== "Nothing special";
