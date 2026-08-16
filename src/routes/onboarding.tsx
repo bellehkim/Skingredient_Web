@@ -72,12 +72,6 @@ const STEPS = [
       "Prepare for an event",
     ],
   },
-  {
-    title: "Do you have an important event coming up?",
-    subtitle: "We'll adjust today's plan.",
-    options: ["No", "Tomorrow", "Within 3 days", "Within a week"],
-    multi: false,
-  },
 ];
 
 function Onboarding() {
