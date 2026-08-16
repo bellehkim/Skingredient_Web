@@ -19,6 +19,21 @@ const STRONG_ACTIVE_CATEGORIES = new Set(
     .filter((c): c is string => Boolean(c)),
 );
 
+// Display-only skincare-step order for the final "Recommended for you" list
+// — applied strictly after selection/scoring/tie-breaking below have
+// already picked the winning product per category, so it can never affect
+// which product wins a category. A category simply isn't in the array if
+// nothing matched it, so sorting against this order never inserts a
+// placeholder.
+const CATEGORY_DISPLAY_ORDER = [
+  "Cleanser",
+  "Toner/Essence",
+  "Serum",
+  "Moisturizer",
+  "Treatment",
+  "Sunscreen",
+];
+
 // Maintenance mode (recommendationEngine.ts's healthy fallback) prioritizes
 // gentle barrier/hydration ingredients only — it deliberately never lists
 // "Sunscreen"/UV filters as a visible PRIORITIZE chip (that's not an
@@ -27,13 +42,14 @@ const STRONG_ACTIVE_CATEGORIES = new Set(
 // rather than through the prioritized-label bridge.
 const MAINTENANCE_UV_FILTER_CATEGORY = "uv_filter";
 
+// Deliberately doesn't repeat the matched ingredient(s) in this sentence —
+// the card's separate "Contains: ..." line (keyIngredients) already states
+// them. matchedLabels still decides which branch applies (unchanged
+// priority: a real prioritized-ingredient match beats the maintenance-mode
+// UV note), just no longer interpolated into the text.
 function buildReason(matchedLabels: string[], matchedUvFilter: boolean): string {
   if (matchedLabels.length > 0) {
-    const joined =
-      matchedLabels.length === 1
-        ? matchedLabels[0]
-        : `${matchedLabels.slice(0, -1).join(", ")} and ${matchedLabels[matchedLabels.length - 1]}`;
-    return `Recommended to support today's plan — contains ${joined}.`;
+    return "Recommended to support today's plan.";
   }
   if (matchedUvFilter) {
     return "Recommended for daily UV protection as part of your maintenance routine.";
@@ -176,6 +192,18 @@ export function getTodaysRecommendations(
     .sort((a, b) => b.matchedCategories.size - a.matchedCategories.size);
 
   const matched = selectDiverseTopMatches(ranked, MAX_RECOMMENDATIONS);
+
+  // Selection is fully decided above — this only reorders the already-final
+  // list for display, into the fixed skincare-step order. A category not in
+  // CATEGORY_DISPLAY_ORDER (shouldn't happen for the real catalog, but not
+  // assumed) sorts after every named step rather than throwing.
+  matched.sort((a, b) => {
+    const aIndex = CATEGORY_DISPLAY_ORDER.indexOf(a.product.category);
+    const bIndex = CATEGORY_DISPLAY_ORDER.indexOf(b.product.category);
+    const aRank = aIndex === -1 ? CATEGORY_DISPLAY_ORDER.length : aIndex;
+    const bRank = bIndex === -1 ? CATEGORY_DISPLAY_ORDER.length : bIndex;
+    return aRank - bRank;
+  });
 
   return matched.map(({ product, matchedCategories, matchedIngredientNames }) => {
     const matchedLabels = recommendation.prioritizedIngredients.filter((label) => {

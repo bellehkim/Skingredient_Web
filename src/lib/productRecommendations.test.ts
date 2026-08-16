@@ -238,6 +238,75 @@ describe("getTodaysRecommendations — strong-active diversity tie-break", () =>
   });
 });
 
+describe("getTodaysRecommendations — display order", () => {
+  it("returns final recommendations in fixed skincare-step order regardless of catalog/selection order", () => {
+    // Catalog order deliberately scrambled relative to the display order —
+    // Sunscreen and Treatment come first, Cleanser last — so this only
+    // passes if a real reordering step runs after selection.
+    const catalog: CatalogProduct[] = [
+      product(1, "Sunscreen", ["niacinamide"], "BrandA"),
+      product(2, "Treatment", ["salicylic_acid"], "BrandB"),
+      product(3, "Moisturizer", ["ceramide"], "BrandC"),
+      product(4, "Serum", ["hyaluronic_acid"], "BrandD"),
+      product(5, "Toner/Essence", ["glycerin"], "BrandE"),
+      product(6, "Cleanser", ["panthenol"], "BrandF"),
+    ];
+    const result = getTodaysRecommendations(
+      catalog,
+      recommendation({
+        prioritizedIngredients: [
+          "Niacinamide",
+          "Salicylic Acid",
+          "Ceramides",
+          "Hyaluronic Acid",
+          "Glycerin",
+          "Panthenol",
+        ],
+      }),
+    );
+    expect(result.map((p) => p.category)).toEqual([
+      "Cleanser",
+      "Toner/Essence",
+      "Serum",
+      "Moisturizer",
+      "Treatment",
+      "Sunscreen",
+    ]);
+  });
+
+  it("skips missing categories in the display order without inserting placeholders", () => {
+    const catalog: CatalogProduct[] = [
+      product(1, "Sunscreen", ["niacinamide"], "BrandA"),
+      product(2, "Cleanser", ["panthenol"], "BrandB"),
+    ];
+    const result = getTodaysRecommendations(
+      catalog,
+      recommendation({ prioritizedIngredients: ["Niacinamide", "Panthenol"] }),
+    );
+    expect(result.map((p) => p.category)).toEqual(["Cleanser", "Sunscreen"]);
+  });
+
+  it("display order does not change which product wins a category", () => {
+    // Same tie-break setup as the brand-diversity test above: BrandA must
+    // still win Moisturizer on relevance even though display order now
+    // places Moisturizer before Sunscreen/Treatment in the catalog here.
+    const catalog: CatalogProduct[] = [
+      product(1, "Cleanser", ["salicylic_acid"], "BrandA"),
+      product(2, "Moisturizer", ["niacinamide", "ceramide"], "BrandA"),
+      product(3, "Moisturizer", ["niacinamide"], "BrandB"),
+    ];
+    const result = getTodaysRecommendations(
+      catalog,
+      recommendation({
+        prioritizedIngredients: ["Salicylic Acid", "Niacinamide", "Ceramides"],
+      }),
+    );
+    const moisturizerPick = result.find((p) => p.category === "Moisturizer");
+    expect(moisturizerPick?.id).toBe("2");
+    expect(moisturizerPick?.brand).toBe("BrandA");
+  });
+});
+
 describe("getTodaysRecommendations — reported ingredient reactions", () => {
   it("drops a product entirely if it contains an exact reported-irritating ingredient", () => {
     const catalog: CatalogProduct[] = [
