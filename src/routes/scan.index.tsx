@@ -10,6 +10,16 @@ import { createAnalysis } from "@/lib/data/analyses";
 import { generateRecommendation } from "@/lib/recommendationEngine";
 import { generateAndPersistSkinStrategy } from "@/lib/skinStrategyFlow";
 import { preprocessImageForAnalysis } from "@/lib/imagePreprocessing";
+import {
+  DEMO_ANALYSIS,
+  DEMO_SKIN_DIRECTION,
+  DEMO_SKIN_STRATEGY,
+  DEMO_SCHEDULE_OPTION,
+  DEMO_EVENT_TIMING,
+} from "@/data/demoFixture";
+import { isDemoModeActive, setDemoModeActive } from "@/lib/demoMode";
+import type { SkinAnalysisResult } from "@/lib/types";
+import type { YouCamTaskResultItem } from "@/routes/api/skin-analysis";
 
 const scanSearchSchema = z.object({
   // Set only when arriving straight from the onboarding survey (see
@@ -18,6 +28,14 @@ const scanSearchSchema = z.object({
   // survey rather than a jump into the main app shell. Reached normally
   // (bottom nav / sidebar), the full chrome is correct as-is.
   onboarding: z.boolean().optional(),
+  // Demo Mode (src/data/demoFixture.ts) — an internal/dev-only switch, never
+  // a visible UI control. Navigate to /scan?demo=true before a presentation;
+  // the normal Upload photo / Capture flow is completely unchanged (the
+  // presenter picks any real image file, sees it go through the exact same
+  // UI), only the analysis result is swapped for the fixture. Gated a second
+  // time by import.meta.env.DEV below, so this is a no-op in production even
+  // if the query param leaks into a shared/bookmarked URL.
+  demo: z.boolean().optional(),
 });
 
 export const Route = createFileRoute("/scan/")({
@@ -27,7 +45,16 @@ export const Route = createFileRoute("/scan/")({
 });
 
 function Scan() {
-  const { onboarding: fromOnboarding } = Route.useSearch();
+  const { onboarding: fromOnboarding, demo } = Route.useSearch();
+  // ?demo=true is only the activation trigger — once seen, it persists the
+  // session-level flag (src/lib/demoMode.ts) so Demo Mode survives
+  // navigation/refresh in this tab without needing the query param on every
+  // route (Insights reads the same flag). Second DEV gate here is redundant
+  // with demoMode.ts's own gate, kept for clarity at the call site.
+  useEffect(() => {
+    if (import.meta.env.DEV && demo === true) setDemoModeActive(true);
+  }, [demo]);
+  const isDemoMode = import.meta.env.DEV && (demo === true || isDemoModeActive());
   const navigate = useNavigate();
   const router = useRouter();
   // Reached normally (bottom nav/sidebar), Scan is a peer top-level page and
@@ -105,19 +132,42 @@ function Scan() {
     };
   }, []);
 
-  const start = async (image: Blob) => {
+  const start = async (image: Blob, opts?: { demo?: boolean }) => {
     setError(null);
     setScanning(true);
     setStep(0);
     try {
-      // Conservative resize (only if unnecessarily large, never upscaled —
-      // see src/lib/imagePreprocessing.ts) before the one upload attempt.
-      // Runs once here, so the server's own retry-on-network-failure
-      // (uploadImage's putWithRetry in src/routes/api/skin-analysis.ts)
-      // reuses this exact same processed blob rather than reprocessing.
-      const processedImage = await preprocessImageForAnalysis(image);
-      const { youcamRaw, ...result } = await skinAnalysisService.analyze(processedImage);
+      let result: SkinAnalysisResult;
+      let youcamRaw: YouCamTaskResultItem[] | undefined;
+      // Demo Mode (src/data/demoFixture.ts) — a presentation-only fixture
+      // layer, never production behavior. Never calls YouCam or Claude. Real
+      // capture/upload always takes the branch below unchanged; this only
+      // runs when isDemoMode is true (src/lib/demoMode.ts's session flag,
+      // activated by visiting /scan?demo=true — no separate UI control).
+      if (opts?.demo) {
+        result = {
+          ...DEMO_ANALYSIS,
+          analyzedAt: new Date().toISOString(),
+          skinDirection: DEMO_SKIN_DIRECTION,
+          skinStrategy: DEMO_SKIN_STRATEGY,
+        };
+      } else {
+        // Conservative resize (only if unnecessarily large, never upscaled —
+        // see src/lib/imagePreprocessing.ts) before the one upload attempt.
+        // Runs once here, so the server's own retry-on-network-failure
+        // (uploadImage's putWithRetry in src/routes/api/skin-analysis.ts)
+        // reuses this exact same processed blob rather than reprocessing.
+        const processedImage = await preprocessImageForAnalysis(image);
+        const analyzed = await skinAnalysisService.analyze(processedImage);
+        youcamRaw = analyzed.youcamRaw;
+        result = analyzed;
+      }
 
+      // Demo Mode forces the upcoming-plan context (approved scenario:
+      // outdoor day tomorrow) so the schedule adjustment — and the
+      // Sunscreen/UV emphasis it adds on top of the fixture's real skin
+      // concern, never replacing it — is reproducible regardless of what
+      // was actually checked in today. Real scans always use live state.
       // A completed scan always produces a report — never gated on today's
       // Daily Check-in. AI Skin Strategy is the one part that IS gated: it
       // requires both today's real analysis AND today's check-in, so it's
@@ -132,8 +182,8 @@ function Scan() {
         symptoms,
         sensitivities: irritatingIngredientNames,
         recentActives: [],
-        scheduleTomorrow,
-        eventTiming,
+        scheduleTomorrow: opts?.demo ? DEMO_SCHEDULE_OPTION : scheduleTomorrow,
+        eventTiming: opts?.demo ? DEMO_EVENT_TIMING : eventTiming,
         ingredientHistory,
         irritatingCategories,
       });
@@ -159,8 +209,10 @@ function Scan() {
       // Strategy exactly once, right now, and patch the same row (never a
       // second analysis). If check-in hasn't happened yet, this is skipped
       // entirely; submitting check-in later is what triggers it then (see
-      // src/routes/scan.check-in.tsx / appStore.submitTodaysCheckIn).
-      if (checkInCompletedToday) {
+      // src/routes/scan.check-in.tsx / appStore.submitTodaysCheckIn). Demo
+      // Mode already has a fixed skinStrategy from the fixture, so it never
+      // needs (or makes) this real Claude call.
+      if (checkInCompletedToday && !opts?.demo) {
         const enriched = await generateAndPersistSkinStrategy({
           analysis: saved,
           symptoms,
@@ -220,7 +272,7 @@ function Scan() {
     ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
     canvas.toBlob(
       (blob) => {
-        if (blob) start(blob);
+        if (blob) start(blob, { demo: isDemoMode });
       },
       "image/jpeg",
       0.92,
@@ -230,7 +282,7 @@ function Scan() {
   const onFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (file) start(file);
+    if (file) start(file, { demo: isDemoMode });
   };
 
   // Onboarding-only: there's no report without a scan, so skipping goes

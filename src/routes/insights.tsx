@@ -18,6 +18,8 @@ import { getAnalysisHistory } from "@/lib/data/analyses";
 import { deriveOverallCondition } from "@/lib/overallCondition";
 import { deriveSkinType } from "@/lib/skinType";
 import { METRIC_COLORS } from "@/lib/metricColors";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { DEMO_ANALYSIS_HISTORY } from "@/data/demoFixture";
 import type { SkinAnalysisResult } from "@/lib/types";
 
 const HISTORY_LIST_LIMIT = 5;
@@ -65,6 +67,12 @@ function Insights() {
   const [history, setHistory] = useState<SkinAnalysisResult[] | null>(null);
   const [selectedMetric, setSelectedMetric] = useState<TrendMetricKey>("redness");
 
+  // Demo Mode (src/lib/demoMode.ts, DEV-only session flag) completely
+  // replaces this fetch with the fixture — getAnalysisHistory() is not
+  // called at all in that branch, so fixture rows can never mix with real
+  // Supabase history. Real Mode is otherwise byte-for-byte what it was
+  // before Demo Mode existed.
+  //
   // Read-only: getAnalysisHistory() only selects already-saved skin_analyses
   // rows — it never calls YouCam/Claude. Fetched once on mount, not
   // re-triggered by opening/reopening an older analysis. Fetches more than
@@ -72,6 +80,10 @@ function Insights() {
   // has enough rows to actually filter from, rather than just being capped
   // at whatever the History list shows.
   useEffect(() => {
+    if (isDemoModeActive()) {
+      setHistory(DEMO_ANALYSIS_HISTORY);
+      return;
+    }
     getAnalysisHistory()
       .then(setHistory)
       .catch((err) => {
