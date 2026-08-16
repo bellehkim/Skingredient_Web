@@ -50,13 +50,18 @@ function IngredientSensitivities() {
     [irritatingIngredientNames, libraryByInciLower],
   );
 
+  // Shows the full eligible library the moment the picker opens (no empty
+  // "type to search" state) — query, when present, just filters this same
+  // list in place rather than switching to a separate search-results mode.
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return ingredientLibrary
+    const eligible = ingredientLibrary
       .filter((e) => !sensitiveLower.has(e.inciName.toLowerCase()))
-      .filter((e) => e.name.toLowerCase().includes(q) || e.inciName.toLowerCase().includes(q))
-      .slice(0, 8);
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (!q) return eligible;
+    return eligible.filter(
+      (e) => e.name.toLowerCase().includes(q) || e.inciName.toLowerCase().includes(q),
+    );
   }, [ingredientLibrary, query, sensitiveLower]);
 
   return (
@@ -121,30 +126,31 @@ function IngredientSensitivities() {
                   className="w-full bg-transparent text-[14px] outline-none placeholder:text-ink-muted"
                 />
               </div>
-              {query.trim() &&
-                (searchResults.length > 0 ? (
-                  <div className="mt-3 space-y-1.5">
-                    {searchResults.map((e) => (
-                      <button
-                        key={e.id}
-                        onClick={() => {
-                          recordReaction(e.inciName, "irritating");
-                          setQuery("");
-                          setAdding(false);
-                        }}
-                        className="flex w-full items-center justify-between rounded-2xl border border-hairline px-3.5 py-2.5 text-left"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-[13.5px] font-medium text-ink">{e.name}</p>
-                          <p className="truncate text-[11.5px] text-ink-muted">{e.inciName}</p>
-                        </div>
-                        <Plus size={16} className="shrink-0 text-brand" />
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 px-1 text-[12.5px] text-ink-muted">No matching ingredients.</p>
-                ))}
+              {searchResults.length > 0 ? (
+                <div className="mt-3 max-h-80 space-y-1.5 overflow-y-auto">
+                  {searchResults.map((e) => (
+                    <button
+                      key={e.id}
+                      onClick={() => {
+                        recordReaction(e.inciName, "irritating");
+                        setQuery("");
+                        setAdding(false);
+                      }}
+                      className="flex w-full items-center justify-between rounded-2xl border border-hairline px-3.5 py-2.5 text-left"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[13.5px] font-medium text-ink">{e.name}</p>
+                        <p className="truncate text-[11.5px] text-ink-muted">{e.inciName}</p>
+                      </div>
+                      <Plus size={16} className="shrink-0 text-brand" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                query.trim() && (
+                  <p className="mt-3 px-1 text-[12.5px] text-ink-muted">No ingredients found.</p>
+                )
+              )}
               <button
                 onClick={() => {
                   setAdding(false);
