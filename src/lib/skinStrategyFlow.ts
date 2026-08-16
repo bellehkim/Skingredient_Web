@@ -1,4 +1,3 @@
-import { mockUser } from "@/data/mockData";
 import { deriveOverallCondition } from "./overallCondition";
 import { deriveSkinType } from "./skinType";
 import { generateRecommendation } from "./recommendationEngine";
@@ -88,13 +87,14 @@ export async function generateAndPersistSkinStrategy(
     eventTiming,
     ingredientHistory,
     irritatingCategories,
+    irritatingIngredientNames,
   } = params;
   if (!analysis.id) return null;
 
   const recommendationSnapshot = generateRecommendation({
     analysis,
     symptoms,
-    sensitivities: mockUser.sensitivities,
+    sensitivities: irritatingIngredientNames,
     recentActives: [],
     scheduleTomorrow,
     eventTiming,

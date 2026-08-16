@@ -310,7 +310,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         ? generateRecommendation({
             analysis: todaysAnalysis,
             symptoms,
-            sensitivities: mockUser.sensitivities,
+            sensitivities: reactionsData.irritatingIngredientNames,
             recentActives: [],
             scheduleTomorrow,
             eventTiming,

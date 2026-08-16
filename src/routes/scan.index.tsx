@@ -9,7 +9,6 @@ import { useAppStore } from "@/lib/appStore";
 import { createAnalysis } from "@/lib/data/analyses";
 import { generateRecommendation } from "@/lib/recommendationEngine";
 import { generateAndPersistSkinStrategy } from "@/lib/skinStrategyFlow";
-import { mockUser } from "@/data/mockData";
 
 const scanSearchSchema = z.object({
   // Set only when arriving straight from the onboarding survey (see
@@ -124,7 +123,7 @@ function Scan() {
       const recommendationSnapshot = generateRecommendation({
         analysis: result,
         symptoms,
-        sensitivities: mockUser.sensitivities,
+        sensitivities: irritatingIngredientNames,
         recentActives: [],
         scheduleTomorrow,
         eventTiming,
