@@ -74,12 +74,30 @@ describe("applyScheduleAdjustment", () => {
       );
     });
 
-    it("outdoor-day adds Sunscreen without removing existing prioritized ingredients", () => {
+    it("outdoor-day at tomorrow-level timing leaves today's prioritized list untouched (no Sunscreen inserted)", () => {
       const adjusted = applyScheduleAdjustment(acneBaseline, "outdoor-day", "tomorrow");
-      expect(adjusted.prioritizedIngredients).toContain("Sunscreen");
-      expect(adjusted.prioritizedIngredients).toEqual(
-        expect.arrayContaining(acneBaseline.prioritizedIngredients),
+      expect(adjusted.prioritizedIngredients).not.toContain("Sunscreen");
+      expect(adjusted.prioritizedIngredients).toEqual(acneBaseline.prioritizedIngredients);
+    });
+
+    it("outdoor-day at tomorrow-level timing adds only Retinoids to avoided, keeping existing avoided items", () => {
+      const adjusted = applyScheduleAdjustment(acneBaseline, "outdoor-day", "tomorrow");
+      expect(adjusted.avoidedIngredients).toEqual(
+        expect.arrayContaining([
+          ...acneBaseline.avoidedIngredients,
+          "Retinoids",
+        ]),
       );
+      // Conservative, one-ingredient caution — not a blanket "all actives" avoid.
+      expect(adjusted.avoidedIngredients).not.toContain("AHA");
+      expect(adjusted.avoidedIngredients).not.toContain("BHA");
+      expect(adjusted.avoidedIngredients).not.toContain("Salicylic Acid");
+    });
+
+    it("outdoor-day at tomorrow-level timing mentions tomorrow's sunscreen/UV context in the explanation", () => {
+      const adjusted = applyScheduleAdjustment(acneBaseline, "outdoor-day", "tomorrow");
+      expect(adjusted.explanation.toLowerCase()).toContain("sunscreen");
+      expect(adjusted.explanation.toLowerCase()).toContain("tomorrow");
     });
 
     it("does not contradict a barrier-recovery baseline that's already gentle", () => {

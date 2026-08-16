@@ -164,10 +164,12 @@ function Scan() {
       }
 
       // Demo Mode forces the upcoming-plan context (approved scenario:
-      // outdoor day tomorrow) so the schedule adjustment — and the
-      // Sunscreen/UV emphasis it adds on top of the fixture's real skin
-      // concern, never replacing it — is reproducible regardless of what
-      // was actually checked in today. Real scans always use live state.
+      // outdoor day tomorrow) so the schedule adjustment — which keeps
+      // today's Blemish Control plan intact and only adds a conservative
+      // Retinoids caution, saving the Sunscreen/UV emphasis for tomorrow
+      // (see sunProtectionForTiming's "tomorrow" branch in
+      // scheduleAdjustments.ts) — is reproducible regardless of what was
+      // actually checked in today. Real scans always use live state.
       // A completed scan always produces a report — never gated on today's
       // Daily Check-in. AI Skin Strategy is the one part that IS gated: it
       // requires both today's real analysis AND today's check-in, so it's

@@ -57,9 +57,11 @@ describe("DEMO_ANALYSIS_HISTORY", () => {
 });
 
 // Locks in the approved Demo Mode scenario: skin condition drives Blemish
-// Control, and the outdoor-day-tomorrow adjustment adds sunscreen on top
-// without dropping the underlying concern — see src/routes/scan.index.tsx's
-// `demo` branch.
+// Control, and the outdoor-day-tomorrow adjustment keeps today's plan
+// predictable (no Sunscreen inserted, no dropped blemish-control actives)
+// while adding a conservative Retinoids caution and emphasizing tomorrow's
+// sun protection in the explanation — see src/routes/scan.index.tsx's
+// `demo` branch and src/lib/scheduleAdjustments.ts's sunProtectionForTiming.
 describe("DEMO_ANALYSIS scenario", () => {
   const analysis = { ...DEMO_ANALYSIS, analyzedAt: new Date().toISOString() };
 
@@ -80,7 +82,7 @@ describe("DEMO_ANALYSIS scenario", () => {
     expect(rec.prioritizedIngredients).not.toContain("Sunscreen");
   });
 
-  it("adds Sunscreen on top of Blemish Control when the outdoor-day/tomorrow schedule is forced, without dropping the underlying concern", () => {
+  it("keeps today's Blemish Control priorities unchanged when the outdoor-day/tomorrow schedule is forced, without inserting Sunscreen", () => {
     const rec = generateRecommendation({
       analysis,
       symptoms: [],
@@ -90,11 +92,45 @@ describe("DEMO_ANALYSIS scenario", () => {
       eventTiming: DEMO_EVENT_TIMING,
     });
     expect(rec.direction).toBe("blemish-control");
-    expect(rec.prioritizedIngredients[0]).toBe("Sunscreen");
-    expect(rec.prioritizedIngredients).toEqual(
-      expect.arrayContaining(["Salicylic Acid", "Azelaic Acid", "Niacinamide"]),
+    expect(rec.riskLevel).toBe("moderate");
+    expect(rec.prioritizedIngredients).toEqual([
+      "Salicylic Acid",
+      "Azelaic Acid",
+      "Niacinamide",
+      "Ceramides",
+      "Panthenol",
+    ]);
+    expect(rec.prioritizedIngredients).not.toContain("Sunscreen");
+  });
+
+  it("adds Retinoids to avoided (a conservative, single-ingredient caution) without a blanket ban on other exfoliating actives", () => {
+    const rec = generateRecommendation({
+      analysis,
+      symptoms: [],
+      sensitivities: [],
+      recentActives: [],
+      scheduleTomorrow: DEMO_SCHEDULE_OPTION,
+      eventTiming: DEMO_EVENT_TIMING,
+    });
+    expect(rec.avoidedIngredients).toEqual(
+      expect.arrayContaining(["Multiple exfoliating actives at once", "Retinoids"]),
     );
-    expect(rec.avoidedIngredients).toContain("Multiple exfoliating actives at once");
+    expect(rec.avoidedIngredients).not.toContain("AHA");
+    expect(rec.avoidedIngredients).not.toContain("BHA");
+    expect(rec.avoidedIngredients).not.toContain("Salicylic Acid");
+  });
+
+  it("mentions tomorrow's sunscreen/UV context in the explanation, without an em dash", () => {
+    const rec = generateRecommendation({
+      analysis,
+      symptoms: [],
+      sensitivities: [],
+      recentActives: [],
+      scheduleTomorrow: DEMO_SCHEDULE_OPTION,
+      eventTiming: DEMO_EVENT_TIMING,
+    });
     expect(rec.explanation.toLowerCase()).toContain("sunscreen");
+    expect(rec.explanation.toLowerCase()).toContain("tomorrow");
+    expect(rec.explanation).not.toContain("—");
   });
 });

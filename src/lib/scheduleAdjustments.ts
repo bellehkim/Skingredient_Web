@@ -164,9 +164,11 @@ function barrierSupportForTiming(
   return noteOnly(rec, `${situation} ${phrase} — keep your routine gentle as it approaches.`);
 }
 
-/** Timing-scaled sunscreen emphasis for "outdoor-day": tomorrow/three-days
- * both add Sunscreen to today's plan (there's no lighter version of "wear
- * sunscreen"); week stays informational only, matching the other types. */
+/** Timing-scaled sunscreen emphasis for "outdoor-day": "tomorrow" keeps
+ * today's plan as-is (see below — sunscreen belongs to tomorrow's routine,
+ * not today's priority list); "three-days" adds Sunscreen to today's plan
+ * (there's enough lead time that starting sun-protection habits today is
+ * reasonable); week stays informational only, matching the other types. */
 function sunProtectionForTiming(
   rec: AdjustableRecommendation,
   timing: EventTiming,
@@ -176,8 +178,24 @@ function sunProtectionForTiming(
   if (timing === "week") {
     return noteOnly(
       rec,
-      `You have an outdoor day ${phrase} — keep sunscreen and UV protection in mind as it approaches.`,
+      `You have an outdoor day ${phrase}, so keep sunscreen and UV protection in mind as it approaches.`,
     );
+  }
+  if (timing === "tomorrow") {
+    // Deliberately does NOT touch prioritizedIngredients — tomorrow's
+    // outdoor exposure doesn't change what today's routine needs to
+    // accomplish, it just means today should stay predictable rather than
+    // introduce anything new. Retinoids specifically is added to avoided
+    // (not "all strong actives") because it's a well-known
+    // photosensitizer — a conservative, one-ingredient caution for this
+    // specific upcoming-sun-exposure context, not a claim that retinoids
+    // are generally unsafe or must always be paused before sun exposure.
+    return {
+      ...rec,
+      avoidedIngredients: Array.from(new Set([...rec.avoidedIngredients, "Retinoids"])),
+      explanation:
+        `${rec.explanation} With an outdoor day ${phrase}, keep today's routine predictable and skip introducing new strong actives, then prioritize sunscreen and reapplication once you're outdoors.`.trim(),
+    };
   }
   const prioritizedIngredients = rec.prioritizedIngredients.includes("Sunscreen")
     ? rec.prioritizedIngredients

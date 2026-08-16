@@ -31,11 +31,16 @@ export const DEMO_SKIN_DIRECTION =
 
 /** Fixed "Today's Skin Strategy" — written to match what the real
  * deterministic pipeline actually produces for DEMO_ANALYSIS +
- * DEMO_SCHEDULE_OPTION/DEMO_EVENT_TIMING (Blemish Control + Sunscreen added
- * by the outdoor-day adjustment), opening with the upcoming-plan
- * acknowledgment the way skinStrategyService.ts's real prompt would. */
+ * DEMO_SCHEDULE_OPTION/DEMO_EVENT_TIMING (Blemish Control priorities
+ * unchanged, Retinoids added to avoided, Sunscreen deliberately NOT
+ * inserted into today's priorities — see sunProtectionForTiming's
+ * "tomorrow" branch in scheduleAdjustments.ts). Opens with the upcoming-plan
+ * acknowledgment the way skinStrategyService.ts's real prompt would, keeps
+ * today's guidance and tomorrow's sun-protection emphasis clearly separate,
+ * and frames the Retinoids caution conservatively (this specific
+ * upcoming-sun-exposure context, never "retinoids are generally unsafe"). */
 export const DEMO_SKIN_STRATEGY =
-  "With an outdoor day coming up tomorrow, today's plan puts extra focus on sun protection alongside your usual routine. A few breakouts and some redness are showing up together with slightly lower hydration, so the priority is gentle blemish control paired with steady barrier support rather than reaching for multiple strong treatments at once. Keep your routine simple and consistent today, and let your skin calm down before introducing anything new. Since tomorrow means more sun exposure, reapplying protection throughout the day matters just as much as your morning routine.";
+  "With an outdoor day coming up tomorrow, today's plan stays focused on gentle blemish control paired with steady barrier support. A few breakouts and some redness are showing up alongside slightly lower hydration, so keep tonight's routine predictable and skip introducing anything new or strong, since piling on actives right before more sun exposure isn't worth the extra irritation risk. Save the intensity for another day. Tomorrow, prioritize broad spectrum sunscreen from the morning on and reapply if you're outdoors for a while.";
 
 /** Forced into generateRecommendation() only for the demo branch — never
  * written to daily_checkins, never affects real check-in state. Makes the
