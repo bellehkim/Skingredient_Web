@@ -66,6 +66,10 @@ function ProductDetail() {
   const [fav, setFav] = useState(false);
   const [routineDialogOpen, setRoutineDialogOpen] = useState(false);
   const [routineConfirmation, setRoutineConfirmation] = useState<string | null>(null);
+  // Demo-only product photos aren't committed (see src/data/productImages.ts)
+  // — falls back to the placeholder icon if the file 404s, e.g. on a clone
+  // without that local-only folder.
+  const [imageFailed, setImageFailed] = useState(false);
   const navigate = useNavigate();
 
   // products loads asynchronously (appStore fetches catalog/shelf/custom
@@ -142,14 +146,15 @@ function ProductDetail() {
       />
       <PageContainer>
         <div className="grid items-start gap-8 lg:grid-cols-[1fr_1.1fr]">
-          <div className="grid h-64 w-full place-items-center rounded-3xl border border-hairline bg-white lg:sticky lg:top-6 lg:h-[400px]">
-            {product.imageUrl ? (
+          <div className="grid h-64 w-full place-items-center overflow-hidden rounded-3xl border border-hairline bg-white lg:sticky lg:top-6 lg:h-[400px]">
+            {product.imageUrl && !imageFailed ? (
               <img
                 src={product.imageUrl}
                 alt={`${product.brand} ${product.name}`}
                 width={512}
                 height={512}
-                className="h-full w-full object-contain p-6"
+                className="h-full min-h-0 w-full min-w-0 object-contain p-6"
+                onError={() => setImageFailed(true)}
               />
             ) : (
               <svg width="90" height="120" viewBox="0 0 52 72" fill="none">

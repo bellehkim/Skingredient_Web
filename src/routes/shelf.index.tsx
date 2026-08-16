@@ -28,6 +28,10 @@ const STATUS_LINE: Record<ProductStatus, { text: string; cls: string }> = {
 function Shelf() {
   const { products } = useAppStore();
   const [filter, setFilter] = useState<"all" | ProductStatus>("all");
+  // Demo-only product photos aren't committed (see src/data/productImages.ts)
+  // — per-product so one 404 doesn't hide every other card's image, falls
+  // back to the placeholder icon on a clone without that local-only folder.
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
   const shown = filter === "all" ? products : products.filter((p) => p.status === filter);
 
   return (
@@ -93,14 +97,17 @@ function Shelf() {
               className="flex gap-3 rounded-3xl border border-hairline bg-white p-3 shadow-soft"
             >
               <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white ring-1 ring-hairline">
-                {p.imageUrl ? (
+                {p.imageUrl && !failedImageIds.has(p.id) ? (
                   <img
                     src={p.imageUrl}
                     alt={`${p.brand} ${p.name}`}
                     loading="lazy"
                     width={96}
                     height={96}
-                    className="h-full w-full object-contain p-2"
+                    className="h-full min-h-0 w-full min-w-0 object-contain p-2"
+                    onError={() =>
+                      setFailedImageIds((prev) => new Set(prev).add(p.id))
+                    }
                   />
                 ) : (
                   <BottleIcon />

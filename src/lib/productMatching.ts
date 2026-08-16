@@ -1,5 +1,6 @@
 import type { CatalogProduct } from "./data/catalog";
 import type { DailyRecommendation, Product, ProductStatus } from "./types";
+import { PRODUCT_IMAGES } from "@/data/productImages";
 
 // Skin concern → ingredient category, per Skingredient_MVP_Implementation_Guide.md
 // Section 6. Deliberately a flat static map, not a rule engine — every label
@@ -184,6 +185,7 @@ export function buildProductsFromCatalog(
       keyIngredients,
       reason,
       imageColor: CATEGORY_COLORS[row.category] ?? "#F3F0FF",
+      imageUrl: PRODUCT_IMAGES[id],
     };
   });
 }

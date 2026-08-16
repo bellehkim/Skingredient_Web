@@ -1,4 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { useAppStore } from "@/lib/appStore";
@@ -20,6 +21,10 @@ const STATUS_LINE: Record<ProductStatus, { text: string; cls: string }> = {
 function IngredientDetail() {
   const { ingredientId } = Route.useParams();
   const { ingredientLibrary, products, ingredientHistory } = useAppStore();
+  // Demo-only product photos aren't committed (see src/data/productImages.ts)
+  // — per-product so one 404 doesn't affect other cards, falls back to the
+  // empty ring box on a clone without that local-only folder.
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
 
   // ingredientLibrary loads asynchronously (appStore fetches it once on
   // mount) — on first render (including SSR) it's still empty, which must
@@ -133,14 +138,17 @@ function IngredientDetail() {
                       className="flex items-center gap-3 rounded-2xl border border-hairline bg-white p-3 shadow-soft"
                     >
                       <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white ring-1 ring-hairline">
-                        {p.imageUrl && (
+                        {p.imageUrl && !failedImageIds.has(p.id) && (
                           <img
                             src={p.imageUrl}
                             alt={`${p.brand} ${p.name}`}
                             loading="lazy"
                             width={56}
                             height={56}
-                            className="h-full w-full object-contain p-1.5"
+                            className="h-full min-h-0 w-full min-w-0 object-contain p-1.5"
+                            onError={() =>
+                              setFailedImageIds((prev) => new Set(prev).add(p.id))
+                            }
                           />
                         )}
                       </div>

@@ -23,6 +23,13 @@ dist-ssr
 # Env
 .env
 
+# Demo-only product photos — real brand product photography, downloaded for
+# local demo use only. Never committed/pushed (licensing). See
+# src/data/productImages.ts, which maps product_id -> these local paths and
+# is committed (just filenames, no image bytes) so the app degrades
+# gracefully to its placeholder icon on any clone without this folder.
+public/product-images/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
