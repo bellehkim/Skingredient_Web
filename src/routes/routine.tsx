@@ -186,6 +186,10 @@ function RoutineSection({
     (slot): slot is RoutineSlot & { product: NonNullable<RoutineSlot["product"]> } =>
       slot.product !== null,
   );
+  // Demo-only product photos aren't committed for every product (see
+  // src/data/productImages.ts) — per-slot so one 404 doesn't affect other
+  // cards, falls back to the placeholder icon on error.
+  const [failedProductIds, setFailedProductIds] = useState<Set<string>>(new Set());
 
   return (
     <section className="mt-4">
@@ -201,19 +205,33 @@ function RoutineSection({
               key={slot.label}
               className="flex w-[92px] shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-hairline bg-white p-2 shadow-soft lg:w-auto lg:p-3"
             >
-              <div className="grid h-14 w-14 place-items-center rounded-xl bg-surface-muted">
-                <svg width="28" height="40" viewBox="0 0 52 72">
-                  <rect x="14" y="4" width="24" height="8" rx="2" fill="#ffffff" stroke="#c9d3e0" />
-                  <rect
-                    x="8"
-                    y="14"
-                    width="36"
-                    height="52"
-                    rx="8"
-                    fill="#ffffff"
-                    stroke="#c9d3e0"
+              <div className="grid h-14 w-14 place-items-center overflow-hidden rounded-xl bg-surface-muted">
+                {slot.product.imageUrl && !failedProductIds.has(slot.product.id) ? (
+                  <img
+                    src={slot.product.imageUrl}
+                    alt={slot.product.name}
+                    loading="lazy"
+                    width={56}
+                    height={56}
+                    className="h-full min-h-0 w-full min-w-0 object-contain p-1.5"
+                    onError={() =>
+                      setFailedProductIds((prev) => new Set(prev).add(slot.product.id))
+                    }
                   />
-                </svg>
+                ) : (
+                  <svg width="28" height="40" viewBox="0 0 52 72">
+                    <rect x="14" y="4" width="24" height="8" rx="2" fill="#ffffff" stroke="#c9d3e0" />
+                    <rect
+                      x="8"
+                      y="14"
+                      width="36"
+                      height="52"
+                      rx="8"
+                      fill="#ffffff"
+                      stroke="#c9d3e0"
+                    />
+                  </svg>
+                )}
               </div>
               <p className="line-clamp-2 text-center text-[11px] font-medium text-ink">
                 {slot.product.name}
