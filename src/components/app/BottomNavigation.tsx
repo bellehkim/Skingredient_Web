@@ -2,17 +2,18 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Package, ScanFace, ChartNoAxesCombined, UserRound } from "lucide-react";
 
 const tabs = [
-  { to: "/", label: "Home", icon: Home, match: (p: string) => p === "/" },
+  // /results is today's actionable plan (a scan's output), not longitudinal
+  // history — grouped with Home, not Insights, so "View today's plan"
+  // highlights the Home tab instead of making the app look like it sent the
+  // user to Insights (see src/routes/results.tsx / index.tsx's hero card).
+  { to: "/", label: "Home", icon: Home, match: (p: string) => p === "/" || p === "/results" },
   { to: "/shelf", label: "My shelf", icon: Package, match: (p: string) => p.startsWith("/shelf") },
   { to: "/scan", label: "Scan", icon: ScanFace, match: (p: string) => p.startsWith("/scan") },
-  // /results is where a scan's output lives, not the capture flow itself —
-  // grouped with Insights (Trend/History), the other places "your results"
-  // live, rather than Scan (see src/routes/results.tsx).
   {
     to: "/insights",
     label: "Insights",
     icon: ChartNoAxesCombined,
-    match: (p: string) => p.startsWith("/insights") || p === "/results",
+    match: (p: string) => p.startsWith("/insights"),
   },
   {
     to: "/profile",

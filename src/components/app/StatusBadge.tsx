@@ -1,7 +1,7 @@
 import type { ProductStatus } from "@/lib/types";
 
 const map: Record<ProductStatus, { label: string; cls: string }> = {
-  "use-today": { label: "USE TODAY", cls: "bg-sage-light text-sage" },
+  "use-today": { label: "FITS TODAY'S PLAN", cls: "bg-sage-light text-sage" },
   optional: { label: "OPTIONAL", cls: "bg-sun-light text-[#a1770b]" },
   "skip-today": { label: "SKIP TODAY", cls: "bg-coral-light text-coral" },
   "reaction-reported": { label: "REACTION REPORTED", cls: "bg-coral-light text-coral" },
