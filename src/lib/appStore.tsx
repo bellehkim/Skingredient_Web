@@ -39,6 +39,7 @@ import {
 } from "./data/checkins";
 import { generateAndPersistSkinStrategy } from "./skinStrategyFlow";
 import { calculateCheckInStreak } from "./streak";
+import { wasDemoModeActiveAtPageLoad } from "./demoMode";
 import { todayDateString } from "./date";
 import type {
   DailyRecommendation,
@@ -248,6 +249,30 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   // Hydrate from Supabase on mount — pure reads, never call YouCam/Claude.
   // Best-effort: a fetch failure just keeps the empty/default state.
   useEffect(() => {
+    // Demo Mode presentation entry (src/routes/welcome.tsx, /welcome?demo=true)
+    // needs onboarding to look completely blank for a "true first-time user"
+    // — but a previously-completed onboarding's answers are persisted
+    // server-side and get hydrated right back below. Computed synchronously,
+    // before either async fetch below starts, and captured in this closure:
+    // whichever order/timing the fetches actually resolve in, this decision
+    // was already made up front, so there's no race between "clear" and
+    // "hydrate" overwriting each other. Only fires on the FIRST activation —
+    // wasDemoModeActiveAtPageLoad is a snapshot taken at module load, before
+    // welcome.tsx's own effect (which calls setDemoModeActive) can possibly
+    // run, so this is immune to React's mount-effect ordering between this
+    // ancestor provider and that descendant route. Scoped to /welcome
+    // specifically, not /scan?demo=true (dev convenience path).
+    const isFreshWelcomeDemoActivation =
+      import.meta.env.DEV &&
+      typeof window !== "undefined" &&
+      window.location.pathname === "/welcome" &&
+      new URLSearchParams(window.location.search).get("demo") === "true" &&
+      !wasDemoModeActiveAtPageLoad;
+    if (isFreshWelcomeDemoActivation) {
+      setOnboardingStep(0);
+      setOnboardingAnswers([]);
+    }
+
     getLatestAnalysis()
       .then((saved) => saved && setAnalysis(saved))
       .catch((err) => console.error("Failed to load latest analysis", err))
@@ -259,8 +284,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         setHasCompletedOnboarding(profile.hasCompletedOnboarding);
         // Survives refresh/restart: without this, a completed onboarding's
         // answers would be saved server-side but never read back into the
-        // in-memory onboardingAnswers state that Profile would reuse.
-        if (profile.onboardingAnswers) setOnboardingAnswers(profile.onboardingAnswers);
+        // in-memory onboardingAnswers state that Profile would reuse. Skipped
+        // on a fresh Demo Mode welcome activation — see above.
+        if (profile.onboardingAnswers && !isFreshWelcomeDemoActivation) {
+          setOnboardingAnswers(profile.onboardingAnswers);
+        }
       })
       .catch((err) => console.error("Failed to load profile", err));
 

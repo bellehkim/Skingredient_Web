@@ -26,3 +26,18 @@ export function setDemoModeActive(active: boolean): void {
     window.sessionStorage.removeItem(DEMO_MODE_KEY);
   }
 }
+
+/**
+ * Snapshot of isDemoModeActive() taken once, at module evaluation — which
+ * happens synchronously during the initial script load, before any
+ * component has mounted or run an effect. src/lib/appStore.tsx uses this
+ * (instead of the live isDemoModeActive()) to decide whether a
+ * /welcome?demo=true visit is a *fresh* activation this page load: reading
+ * the live value there would race against src/routes/welcome.tsx's own
+ * effect, which may call setDemoModeActive(true) before or after
+ * appStore's effect runs depending on React's mount-effect ordering between
+ * ancestor and descendant components. This constant is immune to that —
+ * it can only reflect what was true before either effect had a chance to
+ * run.
+ */
+export const wasDemoModeActiveAtPageLoad: boolean = isDemoModeActive();

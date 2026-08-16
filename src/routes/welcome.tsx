@@ -1,12 +1,34 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { z } from "zod";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
+import { setDemoModeActive } from "@/lib/demoMode";
+
+const welcomeSearchSchema = z.object({
+  // Presentation entry point for Demo Mode (src/lib/demoMode.ts) — activates
+  // the same session-level flag /scan?demo=true does, but without jumping
+  // straight to Scan: the whole point is to start the presentation from the
+  // real first-user screen and walk the normal
+  // Welcome -> Onboarding -> Check-in -> Scan flow untouched. /scan?demo=true
+  // still works on its own for quick dev testing.
+  demo: z.boolean().optional(),
+});
 
 export const Route = createFileRoute("/welcome")({
   head: () => ({ meta: [{ title: "Welcome — Skingredient" }] }),
+  validateSearch: welcomeSearchSchema,
   component: Welcome,
 });
 
 function Welcome() {
+  const { demo } = Route.useSearch();
+  // Activates the flag and stays right here — no redirect. Demo Mode is
+  // meant to be invisible: the presenter clicks through Get started ->
+  // Onboarding -> Check-in -> Scan exactly like a real first-time user.
+  useEffect(() => {
+    if (import.meta.env.DEV && demo === true) setDemoModeActive(true);
+  }, [demo]);
+
   return (
     <AppShell hideNav>
       <div className="relative min-h-screen overflow-hidden">
