@@ -61,6 +61,7 @@ function Home() {
     scheduleTomorrow,
     eventTiming,
     checkInCompletedToday,
+    checkInStreak,
     scanCompletedToday,
     setAnalysis,
   } = useAppStore();
@@ -134,7 +135,7 @@ function Home() {
               {user.name} <span className="align-middle">👋</span>
             </h1>
             <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-sun-light px-3 py-1 text-[12px] font-semibold text-[#a1770b]">
-              <Flame size={14} /> {user.streak} day skin check streak
+              <Flame size={14} /> {checkInStreak} day skin check streak
             </div>
           </div>
           <button

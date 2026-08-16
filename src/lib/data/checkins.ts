@@ -40,6 +40,21 @@ export async function getTodaysCheckIn(): Promise<TodaysCheckIn | null> {
   return data ? rowToCheckIn(data as CheckInRow) : null;
 }
 
+/** Every calendar day this user has ever checked in on ("YYYY-MM-DD"
+ * strings), for streak calculation (src/lib/streak.ts) — not scoped to
+ * today like getTodaysCheckIn(). */
+export async function getCheckInDates(): Promise<string[]> {
+  const userId = await getCurrentUserId();
+
+  const { data, error } = await supabase
+    .from("daily_checkins")
+    .select("check_in_date")
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  return (data as { check_in_date: string }[]).map((row) => row.check_in_date);
+}
+
 /**
  * Upserts today's check-in, keyed by (user_id, check_in_date) — submitting
  * again today updates today's row rather than creating a duplicate. One row

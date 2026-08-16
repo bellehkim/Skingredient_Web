@@ -1,0 +1,15 @@
+-- Persists the 5-step onboarding survey (src/routes/onboarding.tsx) as a
+-- single jsonb blob on the profile row, instead of only living in
+-- client-side appStore state (which was lost on refresh and never written
+-- anywhere). Deliberately a single column, not new tables: onboarding
+-- answers are coarse profile-level preferences, not yet consumed by
+-- recommendationEngine.ts. The one real exclusion source for
+-- ingredient-level filtering remains ingredient_reactions
+-- (src/lib/data/ingredientReactions.ts) — onboarding's broad labels like
+-- "Retinoids"/"Fragrance" are stored here as-is and are NOT converted into
+-- ingredient_reactions rows.
+--
+-- Cleared naturally on Reset Demo: resetDemoUser() (src/lib/data/demoUser.ts)
+-- deletes and re-inserts the profiles row without this column set, so it
+-- comes back null for a fresh identity — no extra reset code needed.
+alter table public.profiles add column onboarding_answers jsonb;

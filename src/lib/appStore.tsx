@@ -17,7 +17,7 @@ import { buildProductsFromCatalog } from "./productMatching";
 import { getTodaysRecommendations } from "./productRecommendations";
 import { composeRoutine, type Routine } from "./routineComposer";
 import { getIngredientLibrary, type IngredientLibraryEntry } from "./data/ingredientLibrary";
-import { getProfile, setOnboardingCompleted } from "./data/profile";
+import { getProfile, setOnboardingCompleted, saveOnboardingAnswers } from "./data/profile";
 import {
   getIngredientReactions,
   upsertIngredientReaction,
@@ -31,8 +31,14 @@ import {
   setProductReactionExcluded as setProductReactionExcludedRow,
   EMPTY_PRODUCT_REACTIONS,
 } from "./data/productReactions";
-import { getTodaysCheckIn, upsertTodaysCheckIn, type TodaysCheckIn } from "./data/checkins";
+import {
+  getTodaysCheckIn,
+  upsertTodaysCheckIn,
+  getCheckInDates,
+  type TodaysCheckIn,
+} from "./data/checkins";
 import { generateAndPersistSkinStrategy } from "./skinStrategyFlow";
+import { calculateCheckInStreak } from "./streak";
 import { todayDateString } from "./date";
 import type {
   DailyRecommendation,
@@ -128,6 +134,9 @@ interface AppState {
    * has a row for today) — a real server-side date boundary, not a
    * client-only flag. */
   checkInCompletedToday: boolean;
+  /** Consecutive-day check-in streak, derived from real daily_checkins rows
+   * (src/lib/streak.ts) — not a hardcoded display value. */
+  checkInStreak: number;
   /** True only once a real analysis (has an id) was captured today —
    * derived from analysis.analyzedAt, not from check-in. This — not
    * "analysis !== null" — is the gate for all personalization below, so a
@@ -209,6 +218,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [ingredientLibrary, setIngredientLibrary] = useState<IngredientLibraryEntry[]>([]);
   const [statusOverrides, setStatusOverrides] = useState<Record<string, ProductStatus>>({});
   const [todaysCheckIn, setTodaysCheckIn] = useState<TodaysCheckIn | null>(null);
+  const [checkInDates, setCheckInDates] = useState<string[]>([]);
   const [reactionsData, setReactionsData] = useState(EMPTY_INGREDIENT_REACTIONS);
   const [productReactionsData, setProductReactionsData] = useState(EMPTY_PRODUCT_REACTIONS);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
@@ -226,7 +236,14 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       .finally(() => setAnalysisLoading(false));
 
     getProfile()
-      .then((profile) => profile && setHasCompletedOnboarding(profile.hasCompletedOnboarding))
+      .then((profile) => {
+        if (!profile) return;
+        setHasCompletedOnboarding(profile.hasCompletedOnboarding);
+        // Survives refresh/restart: without this, a completed onboarding's
+        // answers would be saved server-side but never read back into the
+        // in-memory onboardingAnswers state that Profile would reuse.
+        if (profile.onboardingAnswers) setOnboardingAnswers(profile.onboardingAnswers);
+      })
       .catch((err) => console.error("Failed to load profile", err));
 
     Promise.allSettled([
@@ -259,6 +276,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     getTodaysCheckIn()
       .then(setTodaysCheckIn)
       .catch((err) => console.error("Failed to load today's check-in", err));
+
+    getCheckInDates()
+      .then(setCheckInDates)
+      .catch((err) => console.error("Failed to load check-in dates", err));
   }, []);
 
   // Derived from the persisted daily_checkins row, not local/localStorage
@@ -271,6 +292,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const scheduleTomorrow = todaysCheckIn?.scheduleOption ?? "none";
   const eventTiming = todaysCheckIn?.eventTiming ?? "none";
   const checkInCompletedToday = todaysCheckIn !== null;
+  const checkInStreak = useMemo(() => calculateCheckInStreak(checkInDates), [checkInDates]);
 
   const scanCompletedToday =
     analysis !== null &&
@@ -381,6 +403,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     irritatingIngredientNames: reactionsData.irritatingIngredientNames,
     irritatingCategories: reactionsData.irritatingCategories,
     checkInCompletedToday,
+    checkInStreak,
     scanCompletedToday,
     hasCompletedOnboarding,
     onboardingStep,
@@ -523,6 +546,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     submitTodaysCheckIn: async (input) => {
       const saved = await upsertTodaysCheckIn(input);
       setTodaysCheckIn(saved);
+      setCheckInDates((prev) => {
+        const today = todayDateString();
+        return prev.includes(today) ? prev : [...prev, today];
+      });
 
       // scanCompletedToday/analysis reflect this render's state, which is
       // accurate here: nothing about `analysis` changes as a side effect of
@@ -554,6 +581,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       setHasCompletedOnboarding(true);
       setOnboardingCompleted(true).catch((err) =>
         console.error("Failed to persist onboarding completion", err),
+      );
+      saveOnboardingAnswers(onboardingAnswers).catch((err) =>
+        console.error("Failed to persist onboarding answers", err),
       );
     },
     resetOnboarding: () => {

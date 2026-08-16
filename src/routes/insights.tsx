@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Flame, Calendar } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
+import { useAppStore } from "@/lib/appStore";
 import { getMetricStatusText } from "@/lib/metricStatus";
 import { getAnalysisHistory } from "@/lib/data/analyses";
 import { deriveOverallCondition } from "@/lib/overallCondition";
@@ -57,6 +58,7 @@ export const Route = createFileRoute("/insights")({
 });
 
 function Insights() {
+  const { checkInStreak } = useAppStore();
   const { tab = "trend" } = Route.useSearch();
   const navigate = Route.useNavigate();
   const setTab = (t: "trend" | "history") => navigate({ search: { tab: t } });
@@ -149,7 +151,7 @@ function Insights() {
       title="Insights"
       actions={
         <span className="inline-flex items-center gap-1 rounded-full bg-sun-light px-3 py-1.5 text-[12.5px] font-semibold text-[#a1770b]">
-          <Flame size={13} /> 12 day streak
+          <Flame size={13} /> {checkInStreak} day streak
         </span>
       }
     >
@@ -157,7 +159,7 @@ function Insights() {
         <header className="flex items-center justify-between lg:hidden">
           <h1 className="text-[26px] font-bold text-ink">Insights</h1>
           <span className="inline-flex items-center gap-1 rounded-full bg-sun-light px-3 py-1 text-[12px] font-semibold text-[#a1770b]">
-            <Flame size={13} /> 12 day streak
+            <Flame size={13} /> {checkInStreak} day streak
           </span>
         </header>
 
