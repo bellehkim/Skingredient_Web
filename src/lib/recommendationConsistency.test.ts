@@ -179,3 +179,47 @@ describe("Case D — Important Event schedule adjustment", () => {
     expect(strategyInput.prioritizedIngredients).toEqual(recommendation.prioritizedIngredients);
   });
 });
+
+describe("Case E — Outdoor day, tomorrow: Sunscreen is a Recommended Product, never a PRIORITIZE chip", () => {
+  it("keeps PRIORITIZE ingredient-only (no 'Sunscreen' chip) while Recommended Products still offers a Sunscreen product via the baseline uv_filter category", () => {
+    const a = analysis({ acne: 28, hydration: 50, redness: 55 });
+    const recommendation = generateRecommendation({
+      analysis: a,
+      symptoms: [],
+      sensitivities: [],
+      recentActives: [],
+      scheduleTomorrow: "outdoor-day",
+      eventTiming: "tomorrow",
+    });
+    expect(recommendation.direction).toBe("blemish-control");
+    // scheduleAdjustments.ts's sunProtectionForTiming("tomorrow") branch is
+    // unchanged: it never inserts "Sunscreen" into PRIORITIZE, only adds
+    // "Retinoids" to avoided and mentions tomorrow's sun protection in the
+    // explanation text.
+    expect(recommendation.prioritizedIngredients).toEqual([
+      "Salicylic Acid",
+      "Azelaic Acid",
+      "Niacinamide",
+      "Ceramides",
+      "Panthenol",
+    ]);
+    expect(recommendation.avoidedIngredients).toContain("Retinoids");
+    expect(recommendation.explanation.toLowerCase()).toContain("tomorrow");
+
+    const products = getTodaysRecommendations(
+      catalog([
+        [1, "Treatment", "Salicylic Acid", "salicylic_acid"],
+        [2, "Sunscreen", "Titanium Dioxide", "uv_filter"],
+      ]),
+      recommendation,
+    );
+    // Recommended Products still offers a Sunscreen product even though
+    // "Sunscreen" never appeared as a PRIORITIZE ingredient — matched
+    // through the same normal category-ranking logic every other category
+    // uses, not a hardcoded product id.
+    expect(products.map((p) => p.category)).toEqual(
+      expect.arrayContaining(["Treatment", "Sunscreen"]),
+    );
+    expect(products.find((p) => p.category === "Sunscreen")?.id).toBe("2");
+  });
+});

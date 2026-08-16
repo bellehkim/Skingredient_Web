@@ -24,25 +24,29 @@ const STRONG_ACTIVE_CATEGORIES = new Set(
     .filter((c): c is string => Boolean(c)),
 );
 
-// Maintenance mode (recommendationEngine.ts's healthy fallback) prioritizes
-// gentle barrier/hydration ingredients only — it deliberately never lists
-// "Sunscreen"/UV filters as a visible PRIORITIZE chip (that's not an
-// ingredient concern), but daily UV protection is still a real maintenance
-// recommendation, so it's added to the target categories here directly
-// rather than through the prioritized-label bridge.
-const MAINTENANCE_UV_FILTER_CATEGORY = "uv_filter";
+// PRIORITIZE (recommendation.prioritizedIngredients) names ingredients
+// specifically emphasized by today's skin condition — Sunscreen/UV filters
+// deliberately never appear there (that's not a today-specific concern, and
+// scheduleAdjustments.ts's "outdoor-day" + "tomorrow" adjustment leaves
+// prioritizedIngredients untouched on purpose, see sunProtectionForTiming).
+// "Recommended for you" is a broader surface than PRIORITIZE, though: daily
+// sun protection is a real, essential AM category regardless of direction or
+// schedule, so it's added to the target categories here directly, every day
+// — never through the prioritized-label bridge, and never gated on
+// direction/schedule the way the PRIORITIZE chips are.
+const UV_FILTER_CATEGORY = "uv_filter";
 
 // Deliberately doesn't repeat the matched ingredient(s) in this sentence —
 // the card's separate "Contains: ..." line (keyIngredients) already states
 // them. matchedLabels still decides which branch applies (unchanged
-// priority: a real prioritized-ingredient match beats the maintenance-mode
-// UV note), just no longer interpolated into the text.
+// priority: a real prioritized-ingredient match beats the baseline UV
+// note), just no longer interpolated into the text.
 function buildReason(matchedLabels: string[], matchedUvFilter: boolean): string {
   if (matchedLabels.length > 0) {
     return "Recommended to support today's plan.";
   }
   if (matchedUvFilter) {
-    return "Recommended for daily UV protection as part of your maintenance routine.";
+    return "Recommended for daily UV protection.";
   }
   return "Recommended to support today's plan.";
 }
@@ -133,9 +137,10 @@ function selectDiverseTopMatches(ranked: RankedMatch[], max: number): RankedMatc
  * `recommendation.prioritizedIngredients` via the same exact label→
  * functional_category bridge Shelf/Routine already use — never an
  * independently-derived concern list, so this can't disagree with Today's
- * Plan. Simple match-count sort only — no ranking engine. Products with zero
- * matching ingredients are dropped entirely; if there's nothing prioritized,
- * this returns nothing rather than inventing a fallback pick.
+ * Plan — plus UV_FILTER_CATEGORY, added unconditionally as an essential
+ * daily AM category regardless of direction or today's schedule (see
+ * UV_FILTER_CATEGORY above). Simple match-count sort only — no ranking
+ * engine. Products with zero matching ingredients are dropped entirely.
  */
 export function getTodaysRecommendations(
   catalog: CatalogProduct[],
@@ -144,10 +149,7 @@ export function getTodaysRecommendations(
   reactedProductIds: Set<string> = new Set(),
 ): Product[] {
   const targetCategories = labelsToCategories(recommendation.prioritizedIngredients);
-  if (recommendation.direction === "maintenance") {
-    targetCategories.add(MAINTENANCE_UV_FILTER_CATEGORY);
-  }
-  if (targetCategories.size === 0) return [];
+  targetCategories.add(UV_FILTER_CATEGORY);
 
   // Exact-ingredient exclusion (src/lib/data/ingredientReactions.ts) and
   // exact-product exclusion (src/lib/data/productReactions.ts) — a product
@@ -196,7 +198,7 @@ export function getTodaysRecommendations(
       const category = categoryForLabel(label);
       return category ? matchedCategories.has(category) : false;
     });
-    const matchedUvFilter = matchedCategories.has(MAINTENANCE_UV_FILTER_CATEGORY);
+    const matchedUvFilter = matchedCategories.has(UV_FILTER_CATEGORY);
 
     return {
       id: String(product.product_id),

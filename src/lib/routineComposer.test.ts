@@ -79,6 +79,16 @@ describe("composeRoutine", () => {
     expect(amCleanser?.source).toBe("shelf");
   });
 
+  it("places a recommended Sunscreen into the AM slot when Shelf has none — unaffected by whether productRecommendations.ts matched it via a PRIORITIZE ingredient or the baseline uv_filter category", () => {
+    const catalog = [catalogRow(1, "Sunscreen", ["uv_filter"])];
+    const recommended = [product("1", "Sunscreen", "use-today")];
+    const routine = composeRoutine(catalog, [], recommended, recommendation());
+
+    const amSunscreen = routine.am.find((s) => s.label === "Sunscreen");
+    expect(amSunscreen?.product?.id).toBe("1");
+    expect(amSunscreen?.source).toBe("recommended");
+  });
+
   it("leaves a slot empty rather than inventing a product", () => {
     const routine = composeRoutine([], [], [], recommendation());
     expect(routine.am.every((s) => s.product === null)).toBe(true);

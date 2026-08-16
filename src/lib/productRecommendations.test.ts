@@ -341,8 +341,8 @@ describe("getTodaysRecommendations — product-level reactions", () => {
   });
 });
 
-describe("getTodaysRecommendations — maintenance mode", () => {
-  it("includes Sunscreen (uv_filter) even though it's not a visible PRIORITIZE chip", () => {
+describe("getTodaysRecommendations — Sunscreen (uv_filter) is an essential daily category", () => {
+  it("includes Sunscreen for maintenance mode even though it's not a visible PRIORITIZE chip", () => {
     const catalog: CatalogProduct[] = [
       product(1, "Sunscreen", ["uv_filter"]),
       product(2, "Moisturizer", ["glycerin"]),
@@ -361,12 +361,43 @@ describe("getTodaysRecommendations — maintenance mode", () => {
     expect(categories).toContain("Moisturizer");
   });
 
-  it("does not add Sunscreen for non-maintenance directions", () => {
-    const catalog: CatalogProduct[] = [product(1, "Sunscreen", ["uv_filter"])];
+  it("also includes Sunscreen for a non-maintenance direction, without it being a PRIORITIZE chip", () => {
+    const catalog: CatalogProduct[] = [
+      product(1, "Sunscreen", ["uv_filter"]),
+      product(2, "Serum", ["niacinamide"]),
+    ];
     const result = getTodaysRecommendations(
       catalog,
       recommendation({ direction: "oil-balance", prioritizedIngredients: ["Niacinamide"] }),
     );
-    expect(result).toEqual([]);
+    const categories = result.map((p) => p.category);
+    expect(categories).toContain("Sunscreen");
+    expect(categories).toContain("Serum");
+  });
+
+  it("picks the Sunscreen product through normal match-count ranking, not a hardcoded id", () => {
+    const catalog: CatalogProduct[] = [
+      product(1, "Sunscreen", ["uv_filter"], "BrandA"),
+      product(2, "Sunscreen", ["uv_filter", "niacinamide"], "BrandB"),
+    ];
+    const result = getTodaysRecommendations(
+      catalog,
+      recommendation({ prioritizedIngredients: ["Niacinamide"] }),
+    );
+    const sunscreenPicks = result.filter((p) => p.category === "Sunscreen");
+    expect(sunscreenPicks).toHaveLength(1);
+    // Product 2 matches both uv_filter and niacinamide, so it outranks
+    // product 1 (uv_filter only) under the same score-based selection every
+    // other category uses — no special-casing for Sunscreen.
+    expect(sunscreenPicks[0].id).toBe("2");
+  });
+
+  it("still returns nothing when the catalog has no Sunscreen product at all", () => {
+    const catalog: CatalogProduct[] = [product(1, "Serum", ["niacinamide"])];
+    const result = getTodaysRecommendations(
+      catalog,
+      recommendation({ prioritizedIngredients: ["Niacinamide"] }),
+    );
+    expect(result.map((p) => p.category)).not.toContain("Sunscreen");
   });
 });
