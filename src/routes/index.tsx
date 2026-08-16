@@ -302,17 +302,20 @@ function Home() {
               <Calendar size={16} className="text-ink-muted" />
             </div>
 
-            {/* CTA */}
+            {/* CTA — same gradient-strip + white icon-badge language as the
+                status cards above, instead of a flat gray box, so this reads
+                as part of the same card group rather than a dimmer outlier. */}
             <Link
               to="/shelf"
-              className="mt-5 flex items-center justify-between rounded-2xl border border-hairline bg-surface-muted px-5 py-3.5 text-ink lg:mt-0"
+              className="mt-5 flex items-center gap-2.5 rounded-2xl px-4 py-2.5 lg:mt-0"
+              style={{ background: "linear-gradient(90deg, #EDE6FF 0%, #E3F8ED 100%)" }}
             >
-              <span className="inline-flex items-center gap-2.5 text-[14.5px] font-semibold">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-white text-brand">
-                  <Package size={16} />
-                </span>
-                Check products on my shelf
-              </span>
+              <div className="grid h-9 w-9 place-items-center rounded-xl bg-white/70">
+                <Package size={15} className="text-brand" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[14px] font-semibold text-ink">Check products on my shelf</p>
+              </div>
               <ArrowRight size={16} className="text-ink-muted" />
             </Link>
 
