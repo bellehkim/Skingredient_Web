@@ -6,6 +6,7 @@ import {
   DEMO_ANALYSIS_HISTORY,
   DEMO_EVENT_TIMING,
   DEMO_SCHEDULE_OPTION,
+  getDemoHistoryProductIds,
 } from "./demoFixture";
 
 const METRIC_KEYS = [
@@ -19,8 +20,8 @@ const METRIC_KEYS = [
 ] as const;
 
 describe("DEMO_ANALYSIS_HISTORY", () => {
-  it("has 6 entries", () => {
-    expect(DEMO_ANALYSIS_HISTORY).toHaveLength(6);
+  it("has 5 entries", () => {
+    expect(DEMO_ANALYSIS_HISTORY).toHaveLength(5);
   });
 
   it("has today's entry (index 0) match DEMO_ANALYSIS exactly", () => {
@@ -52,6 +53,75 @@ describe("DEMO_ANALYSIS_HISTORY", () => {
         expect(entry[key]).toBeGreaterThanOrEqual(0);
         expect(entry[key]).toBeLessThanOrEqual(100);
       }
+    }
+  });
+
+  it("gives every entry a stable demo-prefixed id that can never collide with a real Supabase uuid", () => {
+    for (const entry of DEMO_ANALYSIS_HISTORY) {
+      expect(entry.id).toMatch(/^demo-\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+
+  it("gives every entry a unique id", () => {
+    const ids = DEMO_ANALYSIS_HISTORY.map((a) => a.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("has today's entry (index 0) id match DEMO_ANALYSIS_HISTORY's own analyzedAt day", () => {
+    const today = new Date(DEMO_ANALYSIS_HISTORY[0].analyzedAt);
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    expect(DEMO_ANALYSIS_HISTORY[0].id).toBe(`demo-${year}-${month}-${day}`);
+  });
+
+  it("produces an approximately 48 -> 49 -> 50 -> 51 -> 53 Overall Condition score, oldest to newest", () => {
+    const scores = DEMO_ANALYSIS_HISTORY.map((a) => deriveOverallCondition(a).score).reverse();
+    expect(scores).toEqual([48, 49, 50, 51, 53]);
+  });
+
+  it("keeps every entry's Overall Condition label at Needs Support", () => {
+    for (const entry of DEMO_ANALYSIS_HISTORY) {
+      expect(deriveOverallCondition(entry).label).toBe("Needs Support");
+    }
+  });
+
+  it("doesn't move pores or dark spots dramatically day to day", () => {
+    const pores = DEMO_ANALYSIS_HISTORY.map((a) => a.pores);
+    const ageSpots = DEMO_ANALYSIS_HISTORY.map((a) => a.ageSpots);
+    expect(Math.max(...pores) - Math.min(...pores)).toBeLessThanOrEqual(5);
+    expect(Math.max(...ageSpots) - Math.min(...ageSpots)).toBeLessThanOrEqual(5);
+  });
+});
+
+describe("getDemoHistoryProductIds", () => {
+  it("returns 6 product ids, one per canonical routine step, for every history entry", () => {
+    for (const entry of DEMO_ANALYSIS_HISTORY) {
+      expect(getDemoHistoryProductIds(entry.id ?? "")).toHaveLength(6);
+    }
+  });
+
+  it("returns an empty list for an id that isn't a recognized demo history entry", () => {
+    expect(getDemoHistoryProductIds("demo-1999-01-01")).toEqual([]);
+  });
+
+  it("matches today's product ids exactly with the established current demo recommendation", () => {
+    expect(getDemoHistoryProductIds(DEMO_ANALYSIS_HISTORY[0].id ?? "")).toEqual([
+      "1",
+      "17",
+      "10",
+      "5",
+      "16",
+      "7",
+    ]);
+  });
+
+  it("keeps adjacent days sharing at least 5 of 6 products", () => {
+    for (let i = 1; i < DEMO_ANALYSIS_HISTORY.length; i++) {
+      const prev = getDemoHistoryProductIds(DEMO_ANALYSIS_HISTORY[i - 1].id ?? "");
+      const curr = getDemoHistoryProductIds(DEMO_ANALYSIS_HISTORY[i].id ?? "");
+      const shared = curr.filter((id, idx) => id === prev[idx]).length;
+      expect(shared).toBeGreaterThanOrEqual(5);
     }
   });
 });

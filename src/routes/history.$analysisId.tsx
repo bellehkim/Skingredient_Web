@@ -3,12 +3,49 @@ import { useEffect, useState } from "react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
+import { RecommendedForYouSection } from "@/components/app/RecommendedForYouSection";
+import { useAppStore } from "@/lib/appStore";
 import { getAnalysisById } from "@/lib/data/analyses";
+import type { CatalogProduct } from "@/lib/data/catalog";
 import { getMetricStatusText } from "@/lib/metricStatus";
 import { deriveOverallCondition } from "@/lib/overallCondition";
 import { deriveSkinType } from "@/lib/skinType";
 import { METRIC_COLORS } from "@/lib/metricColors";
-import type { SkinAnalysisResult } from "@/lib/types";
+import { CATEGORY_COLORS, sortProductsByRoutineStep } from "@/lib/productMatching";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { DEMO_ANALYSIS_HISTORY, getDemoHistoryProductIds } from "@/data/demoFixture";
+import type { Product, SkinAnalysisResult } from "@/lib/types";
+
+/**
+ * Resolves a frozen historical product-id list (src/data/demoFixture.ts's
+ * DEMO_HISTORY_RECOMMENDED_PRODUCT_IDS) against the current catalog — a
+ * plain lookup, never a re-run of the matching/scoring pipeline. Only
+ * ingredients with curated Ingredient Library metadata are shown as "key"
+ * ingredients, same rule src/lib/productMatching.ts's buildProductsFromCatalog
+ * uses for the Product detail page's chips.
+ */
+function resolveHistoricalRecommendations(
+  catalog: CatalogProduct[],
+  productIds: string[],
+  dateLabel: string,
+): Product[] {
+  const resolved = productIds
+    .map((id) => catalog.find((row) => String(row.product_id) === id))
+    .filter((row): row is CatalogProduct => Boolean(row))
+    .map((row) => ({
+      id: String(row.product_id),
+      brand: row.brand,
+      name: row.product_name,
+      category: row.category,
+      status: "use-today" as const,
+      keyIngredients: row.product_ingredients
+        .filter((pi) => pi.ingredients.common_name !== null)
+        .map((pi) => pi.ingredients.inci_name),
+      reason: `Matched to your skin analysis from ${dateLabel}.`,
+      imageColor: CATEGORY_COLORS[row.category] ?? "#F3F0FF",
+    }));
+  return sortProductsByRoutineStep(resolved, (p) => p.category);
+}
 
 export const Route = createFileRoute("/history/$analysisId")({
   head: () => ({ meta: [{ title: "Past analysis — Skingredient" }] }),
@@ -26,8 +63,19 @@ export const Route = createFileRoute("/history/$analysisId")({
 function HistoryDetail() {
   const { analysisId } = Route.useParams();
   const [analysis, setAnalysis] = useState<SkinAnalysisResult | null | undefined>(undefined);
+  const { catalog, products, addToShelf } = useAppStore();
 
   useEffect(() => {
+    // Demo Mode history entries (src/data/demoFixture.ts) are never written
+    // to Supabase, so a "demo-" id must never reach getAnalysisById() — it
+    // would just fail to find a matching real row. Real ids (Supabase
+    // uuids) always take the normal path below, in both modes.
+    if (isDemoModeActive() && analysisId.startsWith("demo-")) {
+      const demoEntry = DEMO_ANALYSIS_HISTORY.find((a) => a.id === analysisId);
+      setAnalysis(demoEntry ?? null);
+      return;
+    }
+
     getAnalysisById(analysisId)
       .then(setAnalysis)
       .catch((err) => {
@@ -66,6 +114,11 @@ function HistoryDetail() {
     dateStyle: "medium",
     timeStyle: "short",
   });
+  const isDemoEntry = isDemoModeActive() && analysisId.startsWith("demo-");
+  const shelfIds = new Set(products.map((p) => p.id));
+  const recommendedProducts = isDemoEntry
+    ? resolveHistoricalRecommendations(catalog, getDemoHistoryProductIds(analysisId), date)
+    : [];
 
   return (
     <AppShell title="Past analysis" back="/insights?tab=history">
@@ -192,6 +245,18 @@ function HistoryDetail() {
             </section>
           )}
         </div>
+
+        {/* Demo Mode only — a frozen product-id snapshot resolved against
+            today's catalog, never a recomputation of that day's matching.
+            Real History entries have no persisted product-level
+            recommendations, so this section never renders for them. */}
+        {isDemoEntry && (
+          <RecommendedForYouSection
+            products={recommendedProducts}
+            shelfIds={shelfIds}
+            onSave={addToShelf}
+          />
+        )}
       </PageContainer>
     </AppShell>
   );

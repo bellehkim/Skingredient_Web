@@ -4,6 +4,7 @@ import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { MetricBar } from "@/components/app/MetricBar";
 import { SkinStrategyCard } from "@/components/app/SkinStrategyCard";
+import { RecommendedForYouSection } from "@/components/app/RecommendedForYouSection";
 import { useAppStore } from "@/lib/appStore";
 import { getMetricStatusText } from "@/lib/metricStatus";
 import { deriveOverallCondition } from "@/lib/overallCondition";
@@ -196,44 +197,7 @@ function Results() {
         {/* Recommended products — from the catalog, matched to today's skin
             concerns (src/lib/productRecommendations.ts). Display only:
             nothing here is on My Shelf until explicitly saved. */}
-        {todaysPicks.length > 0 && (
-          <section className="mt-4 rounded-3xl border border-hairline bg-white p-5 shadow-soft">
-            <h3 className="text-[15px] font-semibold text-ink">Recommended for you</h3>
-            <div className="mt-3 space-y-2">
-              {todaysPicks.map((p) => {
-                const saved = shelfIds.has(p.id);
-                return (
-                  <div
-                    key={p.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-hairline p-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-[13px] text-ink-muted">
-                        {p.brand} · {p.category}
-                      </p>
-                      <p className="truncate text-[14px] font-semibold text-ink">{p.name}</p>
-                      <p className="mt-0.5 text-[12px] text-ink-muted">{p.reason}</p>
-                      {p.keyIngredients.length > 0 && (
-                        <p className="mt-1 text-[11.5px] font-medium text-ink">
-                          Contains: {p.keyIngredients.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => addToShelf(p.id)}
-                      disabled={saved}
-                      className={`shrink-0 rounded-full px-3.5 py-2 text-[12.5px] font-semibold ${
-                        saved ? "bg-surface-muted text-ink-muted" : "bg-brand text-white"
-                      }`}
-                    >
-                      {saved ? "Saved" : "Save to shelf"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
+        <RecommendedForYouSection products={todaysPicks} shelfIds={shelfIds} onSave={addToShelf} />
 
         <Link
           to="/shelf"
