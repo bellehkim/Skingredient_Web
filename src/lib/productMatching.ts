@@ -49,6 +49,38 @@ export const CATEGORY_COLORS: Record<string, string> = {
   "Toner/Essence": "#E9F5F2",
 };
 
+/**
+ * Canonical skincare-step order — the single source of truth for every
+ * place routine-step ordering matters: "Recommended for you"'s final
+ * display order (src/lib/productRecommendations.ts) and Routine Planner's
+ * AM/PM slot order (src/lib/routineComposer.ts) both derive from this same
+ * array rather than each hardcoding their own copy.
+ */
+export const PRODUCT_STEP_ORDER = [
+  "Cleanser",
+  "Toner/Essence",
+  "Serum",
+  "Moisturizer",
+  "Treatment",
+  "Sunscreen",
+] as const;
+
+/**
+ * Sorts by PRODUCT_STEP_ORDER, purely for display — never a scoring or
+ * eligibility signal. A category not in PRODUCT_STEP_ORDER (shouldn't
+ * happen for real catalog data, but not assumed) sorts after every named
+ * step rather than throwing. Uses the platform's stable sort, so items
+ * already adjacent in the same category keep their existing relative
+ * order — this never randomly reshuffles same-category items.
+ */
+export function sortProductsByRoutineStep<T>(items: T[], getCategory: (item: T) => string): T[] {
+  const rank = (category: string) => {
+    const index = PRODUCT_STEP_ORDER.indexOf(category as (typeof PRODUCT_STEP_ORDER)[number]);
+    return index === -1 ? PRODUCT_STEP_ORDER.length : index;
+  };
+  return items.slice().sort((a, b) => rank(getCategory(a)) - rank(getCategory(b)));
+}
+
 /** Exported for reuse by src/lib/routineComposer.ts — same label→category
  * lookup, so "avoid this today" means the same thing in both places. */
 export function labelsToCategories(labels: string[]): Set<string> {
@@ -103,11 +135,24 @@ export function buildProductsFromCatalog(
 
   return catalog.map((row) => {
     const id = String(row.product_id);
-    const keyIngredients = row.product_ingredients.map((pi) => pi.ingredients.inci_name);
+    // Every ingredient this product actually contains — used for status/
+    // reason logic below, which must stay correct regardless of how many
+    // ingredients are curated Ingredient Library entries.
+    const allIngredientNames = row.product_ingredients.map((pi) => pi.ingredients.inci_name);
+    // Display-only subset for the Product detail page's ingredient chips
+    // (src/routes/shelf.$productId.index.tsx) — only ingredients with
+    // curated metadata (common_name), never the full formulation. A
+    // product with just its original 2-3 seeded ingredients (all already
+    // curated) is unaffected; a product with a full verified INCI list
+    // (e.g. iUNIK, COSRX) collapses down to its handful of real key
+    // ingredients instead of every emulsifier/preservative/solvent.
+    const keyIngredients = row.product_ingredients
+      .filter((pi) => pi.ingredients.common_name !== null)
+      .map((pi) => pi.ingredients.inci_name);
     const categories = row.product_ingredients.flatMap((pi) =>
       pi.ingredients.ingredient_functions.map((f) => f.functional_category),
     );
-    const matchedIrritatingName = keyIngredients.find((name) =>
+    const matchedIrritatingName = allIngredientNames.find((name) =>
       irritatingIngredients.has(name.toLowerCase()),
     );
 

@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildProductsFromCatalog } from "./productMatching";
+import { buildProductsFromCatalog, sortProductsByRoutineStep } from "./productMatching";
 import type { CatalogProduct } from "./data/catalog";
 import type { DailyRecommendation } from "./types";
 
-function catalogRow(id: number, inciName: string, functionalCategory: string): CatalogProduct {
+function catalogRow(
+  id: number,
+  inciName: string,
+  functionalCategory: string,
+  commonName: string | null = null,
+): CatalogProduct {
   return {
     product_id: id,
     brand: "Brand",
@@ -13,10 +18,30 @@ function catalogRow(id: number, inciName: string, functionalCategory: string): C
       {
         ingredients: {
           inci_name: inciName,
+          common_name: commonName,
           ingredient_functions: [{ functional_category: functionalCategory }],
         },
       },
     ],
+  };
+}
+
+function multiIngredientRow(
+  id: number,
+  ingredients: { inciName: string; functionalCategory: string; commonName: string | null }[],
+): CatalogProduct {
+  return {
+    product_id: id,
+    brand: "Brand",
+    product_name: `Product ${id}`,
+    category: "Serum",
+    product_ingredients: ingredients.map((i) => ({
+      ingredients: {
+        inci_name: i.inciName,
+        common_name: i.commonName,
+        ingredient_functions: [{ functional_category: i.functionalCategory }],
+      },
+    })),
   };
 }
 
@@ -87,5 +112,96 @@ describe("buildProductsFromCatalog — product-level reactions", () => {
     const products = buildProductsFromCatalog(catalog, recommendation(), new Set(), new Set(["1"]));
     expect(products[0].status).toBe("reaction-reported");
     expect(products[1].status).not.toBe("reaction-reported");
+  });
+});
+
+describe("buildProductsFromCatalog — key ingredient display", () => {
+  it("only includes ingredients with curated common_name metadata in keyIngredients", () => {
+    const catalog = [
+      multiIngredientRow(1, [
+        { inciName: "Snail Secretion Filtrate", functionalCategory: "", commonName: "Snail Secretion Filtrate" },
+        { inciName: "Sodium Hyaluronate", functionalCategory: "hyaluronic_acid", commonName: "Hyaluronic Acid" },
+        { inciName: "Allantoin", functionalCategory: "allantoin", commonName: null },
+        { inciName: "Xanthan Gum", functionalCategory: "", commonName: null },
+        { inciName: "Phenoxyethanol", functionalCategory: "", commonName: null },
+      ]),
+    ];
+    const [product] = buildProductsFromCatalog(catalog, recommendation());
+    expect(product.keyIngredients).toEqual(["Snail Secretion Filtrate", "Sodium Hyaluronate"]);
+    expect(product.keyIngredients).not.toContain("Allantoin");
+    expect(product.keyIngredients).not.toContain("Xanthan Gum");
+    expect(product.keyIngredients).not.toContain("Phenoxyethanol");
+  });
+
+  it("still detects a reported-irritating ingredient even when it has no curated metadata", () => {
+    const catalog = [
+      multiIngredientRow(1, [
+        { inciName: "Allantoin", functionalCategory: "allantoin", commonName: null },
+      ]),
+    ];
+    const [product] = buildProductsFromCatalog(
+      catalog,
+      recommendation(),
+      new Set(["allantoin"]),
+    );
+    expect(product.status).toBe("skip-today");
+    // Display list is still curated-only — the irritating-ingredient
+    // detection above must not depend on it being shown as a chip.
+    expect(product.keyIngredients).toEqual([]);
+  });
+
+  it("leaves a fully-curated small formulation completely unaffected", () => {
+    const catalog = [
+      multiIngredientRow(1, [
+        { inciName: "Ceramide NP", functionalCategory: "ceramide", commonName: "Ceramides" },
+        { inciName: "Glycerin", functionalCategory: "glycerin", commonName: "Glycerin" },
+      ]),
+    ];
+    const [product] = buildProductsFromCatalog(catalog, recommendation());
+    expect(product.keyIngredients).toEqual(["Ceramide NP", "Glycerin"]);
+  });
+});
+
+describe("sortProductsByRoutineStep", () => {
+  it("sorts into Cleanser, Toner/Essence, Serum, Moisturizer, Treatment, Sunscreen order", () => {
+    const items = [
+      { category: "Sunscreen", id: "a" },
+      { category: "Cleanser", id: "b" },
+      { category: "Treatment", id: "c" },
+      { category: "Moisturizer", id: "d" },
+      { category: "Toner/Essence", id: "e" },
+      { category: "Serum", id: "f" },
+    ];
+    const sorted = sortProductsByRoutineStep(items, (i) => i.category);
+    expect(sorted.map((i) => i.id)).toEqual(["b", "e", "f", "d", "c", "a"]);
+  });
+
+  it("preserves the existing relative order of same-category items rather than reshuffling them", () => {
+    const items = [
+      { category: "Serum", id: "first-serum" },
+      { category: "Cleanser", id: "only-cleanser" },
+      { category: "Serum", id: "second-serum" },
+    ];
+    const sorted = sortProductsByRoutineStep(items, (i) => i.category);
+    expect(sorted.map((i) => i.id)).toEqual(["only-cleanser", "first-serum", "second-serum"]);
+  });
+
+  it("sorts an unrecognized category after every named step, without throwing", () => {
+    const items = [
+      { category: "Mystery", id: "unknown" },
+      { category: "Cleanser", id: "known" },
+    ];
+    const sorted = sortProductsByRoutineStep(items, (i) => i.category);
+    expect(sorted.map((i) => i.id)).toEqual(["known", "unknown"]);
+  });
+
+  it("does not mutate the input array", () => {
+    const items = [
+      { category: "Sunscreen", id: "a" },
+      { category: "Cleanser", id: "b" },
+    ];
+    const original = items.slice();
+    sortProductsByRoutineStep(items, (i) => i.category);
+    expect(items).toEqual(original);
   });
 });

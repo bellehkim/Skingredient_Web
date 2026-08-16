@@ -2,6 +2,12 @@ import { supabase } from "./supabaseClient";
 
 export interface CatalogIngredient {
   inci_name: string;
+  /** Set only for curated Ingredient Library entries (same signal
+   * src/lib/data/ingredientLibrary.ts / getProductFullIngredients() use) —
+   * src/lib/productMatching.ts uses this to decide which ingredients are
+   * "key" enough to show as chips on the Product detail page, vs. the
+   * full formulation only shown on the Full ingredient list page. */
+  common_name: string | null;
   ingredient_functions: { functional_category: string }[];
 }
 
@@ -27,10 +33,88 @@ export async function getCatalogProducts(): Promise<CatalogProduct[]> {
     product_name,
     category,
     product_ingredients (
-      ingredients ( inci_name, ingredient_functions ( functional_category ) )
+      ingredients ( inci_name, common_name, ingredient_functions ( functional_category ) )
     )
   `);
 
   if (error) throw error;
   return data as unknown as CatalogProduct[];
+}
+
+export interface FullIngredientEntry {
+  inciName: string;
+  /** Only set for curated Ingredient Library entries (ingredients.common_name
+   * IS NOT NULL) — the same signal src/lib/data/ingredientLibrary.ts uses.
+   * A null commonName means "no verified benefit metadata for this exact
+   * ingredient" — callers must show the bare inci_name only, never invent a
+   * function/benefit for it. */
+  commonName: string | null;
+  benefits: string[] | null;
+  functionalCategories: string[];
+}
+
+export interface ProductFullIngredients {
+  brand: string;
+  productName: string;
+  /** In INCI declaration order (inci_position ascending) — highest
+   * concentration first, per convention. */
+  ingredients: FullIngredientEntry[];
+}
+
+interface ProductFullIngredientsRow {
+  brand: string;
+  product_name: string;
+  product_ingredients: {
+    inci_position: number | null;
+    ingredients: {
+      inci_name: string;
+      common_name: string | null;
+      benefits: string[] | null;
+      ingredient_functions: { functional_category: string }[];
+    };
+  }[];
+}
+
+/**
+ * Verified complete INCI list for one catalog product (MVP demo scope: only
+ * iUNIK Centella Calming Gel Cream currently has a full list seeded — see
+ * supabase/migrations/20260817000000_iunik_full_ingredient_list.sql. Other
+ * products still only have their 2-3 key catalog_source ingredients, so
+ * this simply returns whatever product_ingredients rows exist; it never
+ * fabricates a full list where one hasn't been verified and seeded).
+ * Powers src/routes/shelf.$productId.ingredients.tsx.
+ */
+export async function getProductFullIngredients(
+  productId: string,
+): Promise<ProductFullIngredients | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      `
+      brand,
+      product_name,
+      product_ingredients (
+        inci_position,
+        ingredients ( inci_name, common_name, benefits, ingredient_functions ( functional_category ) )
+      )
+    `,
+    )
+    .eq("product_id", productId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  const row = data as unknown as ProductFullIngredientsRow;
+  const ingredients = row.product_ingredients
+    .slice()
+    .sort((a, b) => (a.inci_position ?? 0) - (b.inci_position ?? 0))
+    .map(({ ingredients: i }) => ({
+      inciName: i.inci_name,
+      commonName: i.common_name,
+      benefits: i.benefits,
+      functionalCategories: i.ingredient_functions.map((f) => f.functional_category),
+    }));
+
+  return { brand: row.brand, productName: row.product_name, ingredients };
 }

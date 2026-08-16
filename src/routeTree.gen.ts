@@ -30,9 +30,10 @@ import { Route as ProfileSensitivitiesRouteImport } from './routes/profile.sensi
 import { Route as ScanIndexRouteImport } from './routes/scan.index'
 import { Route as ScanCheckInRouteImport } from './routes/scan.check-in'
 import { Route as ShelfIndexRouteImport } from './routes/shelf.index'
-import { Route as ShelfProductIdRouteImport } from './routes/shelf.$productId'
 import { Route as ShelfAddRouteImport } from './routes/shelf.add'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ShelfProductIdIndexRouteImport } from './routes/shelf.$productId.index'
+import { Route as ShelfProductIdIngredientsRouteImport } from './routes/shelf.$productId.ingredients'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -141,11 +142,6 @@ const ShelfIndexRoute = ShelfIndexRouteImport.update({
   path: '/shelf/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShelfProductIdRoute = ShelfProductIdRouteImport.update({
-  id: '/shelf/$productId',
-  path: '/shelf/$productId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ShelfAddRoute = ShelfAddRouteImport.update({
   id: '/shelf/add',
   path: '/shelf/add',
@@ -155,6 +151,17 @@ const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
     path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ShelfProductIdIndexRoute = ShelfProductIdIndexRouteImport.update({
+  id: '/shelf/$productId/',
+  path: '/shelf/$productId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShelfProductIdIngredientsRoute =
+  ShelfProductIdIngredientsRouteImport.update({
+    id: '/shelf/$productId/ingredients',
+    path: '/shelf/$productId/ingredients',
     getParentRoute: () => rootRouteImport,
   } as any)
 
@@ -176,13 +183,14 @@ export interface FileRoutesByFullPath {
   '/profile/reactions': typeof ProfileReactionsRoute
   '/profile/sensitivities': typeof ProfileSensitivitiesRoute
   '/scan/check-in': typeof ScanCheckInRoute
-  '/shelf/$productId': typeof ShelfProductIdRoute
   '/shelf/add': typeof ShelfAddRoute
   '/ingredients/': typeof IngredientsIndexRoute
   '/profile/': typeof ProfileIndexRoute
   '/scan/': typeof ScanIndexRoute
   '/shelf/': typeof ShelfIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/shelf/$productId/ingredients': typeof ShelfProductIdIngredientsRoute
+  '/shelf/$productId/': typeof ShelfProductIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -202,13 +210,14 @@ export interface FileRoutesByTo {
   '/profile/reactions': typeof ProfileReactionsRoute
   '/profile/sensitivities': typeof ProfileSensitivitiesRoute
   '/scan/check-in': typeof ScanCheckInRoute
-  '/shelf/$productId': typeof ShelfProductIdRoute
   '/shelf/add': typeof ShelfAddRoute
   '/ingredients': typeof IngredientsIndexRoute
   '/profile': typeof ProfileIndexRoute
   '/scan': typeof ScanIndexRoute
   '/shelf': typeof ShelfIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/shelf/$productId/ingredients': typeof ShelfProductIdIngredientsRoute
+  '/shelf/$productId': typeof ShelfProductIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -229,13 +238,14 @@ export interface FileRoutesById {
   '/profile/reactions': typeof ProfileReactionsRoute
   '/profile/sensitivities': typeof ProfileSensitivitiesRoute
   '/scan/check-in': typeof ScanCheckInRoute
-  '/shelf/$productId': typeof ShelfProductIdRoute
   '/shelf/add': typeof ShelfAddRoute
   '/ingredients/': typeof IngredientsIndexRoute
   '/profile/': typeof ProfileIndexRoute
   '/scan/': typeof ScanIndexRoute
   '/shelf/': typeof ShelfIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/shelf/$productId/ingredients': typeof ShelfProductIdIngredientsRoute
+  '/shelf/$productId/': typeof ShelfProductIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -257,13 +267,14 @@ export interface FileRouteTypes {
     | '/profile/reactions'
     | '/profile/sensitivities'
     | '/scan/check-in'
-    | '/shelf/$productId'
     | '/shelf/add'
     | '/ingredients/'
     | '/profile/'
     | '/scan/'
     | '/shelf/'
     | '/.mcp/invoke-tool/$tool'
+    | '/shelf/$productId/ingredients'
+    | '/shelf/$productId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -283,13 +294,14 @@ export interface FileRouteTypes {
     | '/profile/reactions'
     | '/profile/sensitivities'
     | '/scan/check-in'
-    | '/shelf/$productId'
     | '/shelf/add'
     | '/ingredients'
     | '/profile'
     | '/scan'
     | '/shelf'
     | '/.mcp/invoke-tool/$tool'
+    | '/shelf/$productId/ingredients'
+    | '/shelf/$productId'
   id:
     | '__root__'
     | '/'
@@ -309,13 +321,14 @@ export interface FileRouteTypes {
     | '/profile/reactions'
     | '/profile/sensitivities'
     | '/scan/check-in'
-    | '/shelf/$productId'
     | '/shelf/add'
     | '/ingredients/'
     | '/profile/'
     | '/scan/'
     | '/shelf/'
     | '/.mcp/invoke-tool/$tool'
+    | '/shelf/$productId/ingredients'
+    | '/shelf/$productId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -336,13 +349,14 @@ export interface RootRouteChildren {
   ProfileReactionsRoute: typeof ProfileReactionsRoute
   ProfileSensitivitiesRoute: typeof ProfileSensitivitiesRoute
   ScanCheckInRoute: typeof ScanCheckInRoute
-  ShelfProductIdRoute: typeof ShelfProductIdRoute
   ShelfAddRoute: typeof ShelfAddRoute
   IngredientsIndexRoute: typeof IngredientsIndexRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
   ScanIndexRoute: typeof ScanIndexRoute
   ShelfIndexRoute: typeof ShelfIndexRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ShelfProductIdIngredientsRoute: typeof ShelfProductIdIngredientsRoute
+  ShelfProductIdIndexRoute: typeof ShelfProductIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -494,13 +508,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShelfIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/shelf/$productId': {
-      id: '/shelf/$productId'
-      path: '/shelf/$productId'
-      fullPath: '/shelf/$productId'
-      preLoaderRoute: typeof ShelfProductIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/shelf/add': {
       id: '/shelf/add'
       path: '/shelf/add'
@@ -513,6 +520,20 @@ declare module '@tanstack/react-router' {
       path: '/.mcp/invoke-tool/$tool'
       fullPath: '/.mcp/invoke-tool/$tool'
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shelf/$productId/': {
+      id: '/shelf/$productId/'
+      path: '/shelf/$productId'
+      fullPath: '/shelf/$productId/'
+      preLoaderRoute: typeof ShelfProductIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shelf/$productId/ingredients': {
+      id: '/shelf/$productId/ingredients'
+      path: '/shelf/$productId/ingredients'
+      fullPath: '/shelf/$productId/ingredients'
+      preLoaderRoute: typeof ShelfProductIdIngredientsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -537,13 +558,14 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileReactionsRoute: ProfileReactionsRoute,
   ProfileSensitivitiesRoute: ProfileSensitivitiesRoute,
   ScanCheckInRoute: ScanCheckInRoute,
-  ShelfProductIdRoute: ShelfProductIdRoute,
   ShelfAddRoute: ShelfAddRoute,
   IngredientsIndexRoute: IngredientsIndexRoute,
   ProfileIndexRoute: ProfileIndexRoute,
   ScanIndexRoute: ScanIndexRoute,
   ShelfIndexRoute: ShelfIndexRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ShelfProductIdIngredientsRoute: ShelfProductIdIngredientsRoute,
+  ShelfProductIdIndexRoute: ShelfProductIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

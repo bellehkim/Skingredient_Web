@@ -1,14 +1,30 @@
-import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Heart, CheckCircle2, ListChecks, CalendarPlus } from "lucide-react";
+import { Heart, CheckCircle2, ListChecks, CalendarPlus, Sun, Moon } from "lucide-react";
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { MobileHeader } from "@/components/app/MobileHeader";
 import { StatusBadge } from "@/components/app/StatusBadge";
 import { IngredientChip } from "@/components/app/IngredientChip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/appStore";
+import { isStrongActive } from "@/lib/routineComposer";
 import type { Reaction } from "@/lib/data/ingredientReactions";
+import type { RoutineTimeOfDay } from "@/lib/data/routineItems";
+import type { Product } from "@/lib/types";
 
-export const Route = createFileRoute("/shelf/$productId")({
+// Deliberately shelf.$productId.index.tsx, not shelf.$productId.tsx: a
+// literal shelf.$productId.tsx file would make TanStack Router treat it as
+// the *parent layout* for shelf.$productId.ingredients.tsx (nested under it
+// via getParentRoute), which silently never renders that child page unless
+// this parent also renders an <Outlet/> — same convention shelf.index.tsx
+// and profile.index.tsx already use for exactly this reason.
+export const Route = createFileRoute("/shelf/$productId/")({
   head: () => ({ meta: [{ title: "Product — Skingredient" }] }),
   component: ProductDetail,
 });
@@ -41,9 +57,15 @@ function ProductDetail() {
     recordProductReaction,
     excludedProductIds,
     setProductReactionExcluded,
+    catalog,
+    routineItems,
+    addToRoutine,
+    removeFromRoutine,
   } = useAppStore();
   const product = products.find((p) => p.id === productId);
   const [fav, setFav] = useState(false);
+  const [routineDialogOpen, setRoutineDialogOpen] = useState(false);
+  const [routineConfirmation, setRoutineConfirmation] = useState<string | null>(null);
   const navigate = useNavigate();
 
   // products loads asynchronously (appStore fetches catalog/shelf/custom
@@ -80,6 +102,20 @@ function ProductDetail() {
   const reactionType = productReactionHistory[product.id];
   const reaction = reactionType ? REACTION_LABELS[reactionType] : null;
   const isExcluded = excludedProductIds.has(product.id);
+
+  // This exact product's current manual routine placement — a Set since
+  // "Both" is just "am" and "pm" both present, not a third stored value.
+  const productRoutineTimes = new Set(
+    routineItems.filter((item) => item.productId === product.id).map((item) => item.timeOfDay),
+  );
+  const routineStatusText =
+    productRoutineTimes.size === 2
+      ? "Morning + Evening"
+      : productRoutineTimes.has("am")
+        ? "Morning"
+        : productRoutineTimes.has("pm")
+          ? "Evening"
+          : null;
 
   return (
     <AppShell
@@ -167,16 +203,29 @@ function ProductDetail() {
               )}
             </section>
 
-            <section className="mt-6 space-y-2 lg:grid lg:grid-cols-1 lg:gap-2 lg:space-y-0">
-              <button className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand py-3.5 text-[14px] font-semibold text-white">
-                <CalendarPlus size={16} /> Add to routine
+            {routineStatusText && (
+              <p className="mt-6 text-[12.5px] font-medium text-ink-muted">
+                In routine: <span className="text-ink">{routineStatusText}</span>
+              </p>
+            )}
+
+            <section className={`${routineStatusText ? "mt-3" : "mt-6"} space-y-2 lg:grid lg:grid-cols-1 lg:gap-2 lg:space-y-0`}>
+              <button
+                onClick={() => setRoutineDialogOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand py-3.5 text-[14px] font-semibold text-white"
+              >
+                <CalendarPlus size={16} /> {routineStatusText ? "Edit routine" : "Add to routine"}
               </button>
               <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-hairline bg-white py-3.5 text-[14px] font-semibold text-ink">
                 <CheckCircle2 size={16} /> Mark as used
               </button>
-              <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-hairline bg-white py-3.5 text-[14px] font-semibold text-ink">
+              <Link
+                to="/shelf/$productId/ingredients"
+                params={{ productId: product.id }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-hairline bg-white py-3.5 text-[14px] font-semibold text-ink"
+              >
                 <ListChecks size={16} /> View full ingredient list
-              </button>
+              </Link>
               <button
                 onClick={() => {
                   removeFromShelf(product.id);
@@ -187,6 +236,12 @@ function ProductDetail() {
                 Remove from shelf
               </button>
             </section>
+
+            {routineConfirmation && (
+              <p className="mt-3 flex items-center gap-1.5 text-[12.5px] font-semibold text-sage">
+                <CheckCircle2 size={14} /> {routineConfirmation}
+              </p>
+            )}
           </div>
         </div>
 
@@ -254,6 +309,169 @@ function ProductDetail() {
           Skingredient provides cosmetic skincare guidance and does not diagnose medical conditions.
         </p>
       </PageContainer>
+
+      <AddToRoutineDialog
+        open={routineDialogOpen}
+        onOpenChange={setRoutineDialogOpen}
+        product={product}
+        catalog={catalog}
+        currentTimes={productRoutineTimes}
+        isExcluded={isExcluded}
+        onSave={(additions, removals) => {
+          for (const t of removals) removeFromRoutine(product.id, t);
+          if (additions.length > 0) {
+            addToRoutine(product.id, additions);
+            setRoutineConfirmation(
+              additions.length === 2
+                ? "Added to your morning and evening routine."
+                : additions[0] === "am"
+                  ? "Added to your morning routine."
+                  : "Added to your evening routine.",
+            );
+          }
+          setRoutineDialogOpen(false);
+        }}
+      />
     </AppShell>
+  );
+}
+
+function AddToRoutineDialog({
+  open,
+  onOpenChange,
+  product,
+  catalog,
+  currentTimes,
+  isExcluded,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  product: Product;
+  catalog: Parameters<typeof isStrongActive>[1];
+  currentTimes: Set<RoutineTimeOfDay>;
+  isExcluded: boolean;
+  onSave: (additions: RoutineTimeOfDay[], removals: RoutineTimeOfDay[]) => void;
+}) {
+  const [selected, setSelected] = useState<Set<RoutineTimeOfDay>>(new Set());
+  const [confirmingExcluded, setConfirmingExcluded] = useState(false);
+
+  // Reseed local toggle state from the product's real current placement
+  // every time the sheet opens — a plain useEffect on `open`, not an
+  // onOpenChange hook, since `open` can flip to true from the parent's own
+  // "Add to routine"/"Edit routine" button click, which never calls
+  // onOpenChange itself (Radix only invokes that for its own close
+  // interactions like Escape/overlay click).
+  const [wasOpen, setWasOpen] = useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setSelected(new Set(currentTimes));
+      setConfirmingExcluded(false);
+    }
+  }
+
+  const toggle = (t: RoutineTimeOfDay) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+  };
+
+  const additions = Array.from(selected).filter((t) => !currentTimes.has(t)) as RoutineTimeOfDay[];
+  const removals = Array.from(currentTimes).filter((t) => !selected.has(t)) as RoutineTimeOfDay[];
+  const morningWarning = selected.has("am") && isStrongActive(product, catalog);
+  const eveningWarning = selected.has("pm") && product.category === "Sunscreen";
+
+  const handleSaveTap = () => {
+    if (additions.length > 0 && isExcluded && !confirmingExcluded) {
+      setConfirmingExcluded(true);
+      return;
+    }
+    onSave(additions, removals);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[380px] rounded-3xl border border-hairline bg-white p-6 shadow-lift">
+        {confirmingExcluded ? (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-[17px] font-bold text-ink">Add to routine</DialogTitle>
+            </DialogHeader>
+            <p className="text-[13px] leading-relaxed text-ink">
+              You previously reported irritation with this product.
+            </p>
+            <DialogFooter>
+              <button
+                onClick={() => setConfirmingExcluded(false)}
+                className="w-full rounded-2xl border border-hairline bg-white py-3 text-[14px] font-semibold text-ink sm:w-auto sm:px-6"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onSave(additions, removals)}
+                className="w-full rounded-2xl bg-brand py-3 text-[14px] font-semibold text-white sm:w-auto sm:px-6"
+              >
+                Add anyway
+              </button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-[17px] font-bold text-ink">Add to routine</DialogTitle>
+            </DialogHeader>
+            <p className="text-[13px] text-ink-muted">Choose when to use this product.</p>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => toggle("am")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[13px] font-medium ${
+                  selected.has("am")
+                    ? "border-brand bg-brand text-white"
+                    : "border-hairline bg-white text-ink"
+                }`}
+              >
+                <Sun size={14} /> Morning
+              </button>
+              <button
+                onClick={() => toggle("pm")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-[13px] font-medium ${
+                  selected.has("pm")
+                    ? "border-brand bg-brand text-white"
+                    : "border-hairline bg-white text-ink"
+                }`}
+              >
+                <Moon size={14} /> Evening
+              </button>
+            </div>
+            {(morningWarning || eveningWarning) && (
+              <p className="text-[11.5px] leading-relaxed text-ink-muted">
+                {morningWarning
+                  ? "This product contains an active typically used in the evening."
+                  : "Sunscreen is typically used in the morning."}
+              </p>
+            )}
+            <DialogFooter>
+              <button
+                onClick={() => onOpenChange(false)}
+                className="w-full rounded-2xl border border-hairline bg-white py-3 text-[14px] font-semibold text-ink sm:w-auto sm:px-6"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTap}
+                disabled={additions.length === 0 && removals.length === 0}
+                className="w-full rounded-2xl bg-brand py-3 text-[14px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:px-6"
+              >
+                Save
+              </button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
