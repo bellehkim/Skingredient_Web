@@ -16,6 +16,7 @@ import {
   DEMO_SKIN_STRATEGY,
   DEMO_SCHEDULE_OPTION,
   DEMO_EVENT_TIMING,
+  demoHistoryId,
 } from "@/data/demoFixture";
 import { isDemoModeActive, setDemoModeActive } from "@/lib/demoMode";
 import type { SkinAnalysisResult } from "@/lib/types";
@@ -197,11 +198,20 @@ function Scan() {
       // back to the in-memory result and keep going (skinStrategy stays
       // null either way — generateAndPersistSkinStrategy below no-ops
       // without a persisted id).
-      let saved = result;
-      try {
-        saved = await createAnalysis(result, youcamRaw, recommendationSnapshot);
-      } catch (saveError) {
-        console.error("Failed to save analysis", saveError);
+      // Demo Mode never writes to Supabase at all — kept purely in memory,
+      // same as every other Demo Mode surface. Reuses demoHistoryId(0) (the
+      // same id DEMO_ANALYSIS_HISTORY's "today" entry gets in
+      // src/data/demoFixture.ts) so a live demo scan and Insights/History's
+      // "today" resolve to the exact same entry instead of drifting apart.
+      let saved: SkinAnalysisResult = { ...result, recommendationSnapshot };
+      if (opts?.demo) {
+        saved.id = demoHistoryId(0);
+      } else {
+        try {
+          saved = await createAnalysis(result, youcamRaw, recommendationSnapshot);
+        } catch (saveError) {
+          console.error("Failed to save analysis", saveError);
+        }
       }
 
       setAnalysis(saved);

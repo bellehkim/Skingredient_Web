@@ -102,7 +102,7 @@ function daysAgo(n: number): string {
  * exactly. The "demo-" prefix can never collide with a real Supabase
  * skin_analyses row (a uuid), so src/routes/history.$analysisId.tsx can
  * branch on it unambiguously. */
-function demoHistoryId(n: number): string {
+export function demoHistoryId(n: number): string {
   const d = new Date(Date.now() - n * 24 * 60 * 60 * 1000);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
