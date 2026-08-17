@@ -1,4 +1,6 @@
 import { supabase } from "./supabaseClient";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { CATALOG_PRODUCTS_SNAPSHOT, FULL_INGREDIENTS_SNAPSHOT } from "@/data/catalogSnapshot";
 
 export interface CatalogIngredient {
   inci_name: string;
@@ -27,6 +29,8 @@ export interface CatalogProduct {
  * use-today/optional/skip-today product list.
  */
 export async function getCatalogProducts(): Promise<CatalogProduct[]> {
+  if (isDemoModeActive()) return CATALOG_PRODUCTS_SNAPSHOT;
+
   const { data, error } = await supabase.from("products").select(`
     product_id,
     brand,
@@ -87,6 +91,21 @@ interface ProductFullIngredientsRow {
 export async function getProductFullIngredients(
   productId: string,
 ): Promise<ProductFullIngredients | null> {
+  if (isDemoModeActive()) {
+    const row = FULL_INGREDIENTS_SNAPSHOT[productId];
+    if (!row) return null;
+    const ingredients = row.product_ingredients
+      .slice()
+      .sort((a, b) => (a.inci_position ?? 0) - (b.inci_position ?? 0))
+      .map(({ ingredients: i }) => ({
+        inciName: i.inci_name,
+        commonName: i.common_name,
+        benefits: i.benefits,
+        functionalCategories: i.ingredient_functions.map((f) => f.functional_category),
+      }));
+    return { brand: row.brand, productName: row.product_name, ingredients };
+  }
+
   const { data, error } = await supabase
     .from("products")
     .select(

@@ -17,7 +17,7 @@ import { getAnalysisHistory } from "@/lib/data/analyses";
 import { deriveOverallCondition } from "@/lib/overallCondition";
 import { deriveSkinType } from "@/lib/skinType";
 import { METRIC_COLORS } from "@/lib/metricColors";
-import { isDemoModeActive } from "@/lib/demoMode";
+import { isScriptedPresentationDemo } from "@/lib/demoMode";
 import { DEMO_ANALYSIS_HISTORY } from "@/data/demoFixture";
 import type { SkinAnalysisResult } from "@/lib/types";
 
@@ -78,7 +78,7 @@ function Insights() {
   // has enough rows to actually filter from, rather than just being capped
   // at whatever the History list shows.
   useEffect(() => {
-    if (isDemoModeActive()) {
+    if (isScriptedPresentationDemo()) {
       setHistory(DEMO_ANALYSIS_HISTORY);
       return;
     }

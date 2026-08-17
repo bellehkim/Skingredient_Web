@@ -198,20 +198,20 @@ function Scan() {
       // back to the in-memory result and keep going (skinStrategy stays
       // null either way — generateAndPersistSkinStrategy below no-ops
       // without a persisted id).
-      // Demo Mode never writes to Supabase at all — kept purely in memory,
-      // same as every other Demo Mode surface. Reuses demoHistoryId(0) (the
-      // same id DEMO_ANALYSIS_HISTORY's "today" entry gets in
-      // src/data/demoFixture.ts) so a live demo scan and Insights/History's
-      // "today" resolve to the exact same entry instead of drifting apart.
+      // createAnalysis() itself is Demo Mode-aware — it writes to
+      // localStorage instead of Supabase whenever isDemoModeActive(), so no
+      // separate branch is needed here. For the DEV-only presentation
+      // toggle specifically, force today's id to demoHistoryId(0) — the same
+      // id DEMO_ANALYSIS_HISTORY's "today" entry gets (src/data/demoFixture.ts)
+      // — so Insights' scripted trend and a live demo scan point at the same
+      // entry. A public demo build has no such script to match, so it keeps
+      // whatever id createAnalysis() generates.
       let saved: SkinAnalysisResult = { ...result, recommendationSnapshot };
-      if (opts?.demo) {
-        saved.id = demoHistoryId(0);
-      } else {
-        try {
-          saved = await createAnalysis(result, youcamRaw, recommendationSnapshot);
-        } catch (saveError) {
-          console.error("Failed to save analysis", saveError);
-        }
+      if (opts?.demo) saved.id = demoHistoryId(0);
+      try {
+        saved = await createAnalysis(saved, youcamRaw, recommendationSnapshot);
+      } catch (saveError) {
+        console.error("Failed to save analysis", saveError);
       }
 
       setAnalysis(saved);

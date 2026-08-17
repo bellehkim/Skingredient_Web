@@ -2,8 +2,14 @@ import { supabase } from "./supabaseClient";
 import { getCurrentUserId } from "./demoUser";
 import type { DailyRecommendation, SkinAnalysisResult } from "@/lib/types";
 import type { YouCamTaskResultItem } from "@/routes/api/skin-analysis";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { getLocalRows, insertLocalRow, upsertLocalRow } from "./localStore";
 
 const ALGORITHM_VERSION = "v1.0.0";
+
+interface LocalSkinAnalysisRow extends SkinAnalysisRow {
+  user_id: string;
+}
 
 interface SkinAnalysisRow {
   id: string;
@@ -61,6 +67,31 @@ export async function createAnalysis(
 ): Promise<SkinAnalysisResult> {
   const userId = await getCurrentUserId();
 
+  if (isDemoModeActive()) {
+    const now = new Date().toISOString();
+    const row: LocalSkinAnalysisRow = {
+      id: result.id ?? `demo-scan-${Date.now()}`,
+      user_id: userId,
+      redness: result.redness,
+      hydration: result.hydration,
+      oiliness: result.oiliness,
+      acne: result.acne,
+      pores: result.pores,
+      texture: result.texture,
+      dark_spots: result.ageSpots,
+      skin_direction: result.skinDirection ?? null,
+      skin_direction_generated_at: result.skinDirection ? now : null,
+      skin_strategy: result.skinStrategy ?? null,
+      skin_strategy_generated_at: result.skinStrategy ? now : null,
+      recommendation_snapshot: recommendationSnapshot ?? null,
+      youcam_raw: youcamRaw ?? null,
+      algorithm_version: ALGORITHM_VERSION,
+      analyzed_at: result.analyzedAt,
+      created_at: now,
+    };
+    return rowToResult(insertLocalRow("skin_analyses", row));
+  }
+
   const { data, error } = await supabase
     .from("skin_analyses")
     .insert({
@@ -102,6 +133,15 @@ export async function updateRecommendationSnapshot(
 ): Promise<SkinAnalysisResult> {
   const userId = await getCurrentUserId();
 
+  if (isDemoModeActive()) {
+    const row = upsertLocalRow<LocalSkinAnalysisRow>(
+      "skin_analyses",
+      { id: analysisId, user_id: userId },
+      { recommendation_snapshot: recommendationSnapshot },
+    );
+    return rowToResult(row);
+  }
+
   const { data, error } = await supabase
     .from("skin_analyses")
     .update({ recommendation_snapshot: recommendationSnapshot })
@@ -117,6 +157,12 @@ export async function updateRecommendationSnapshot(
 /** Most recent analysis for the current user, or null if they have none yet. */
 export async function getLatestAnalysis(): Promise<SkinAnalysisResult | null> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const rows = getLocalRows<LocalSkinAnalysisRow>("skin_analyses", { user_id: userId });
+    const [latest] = rows.slice().sort((a, b) => b.analyzed_at.localeCompare(a.analyzed_at));
+    return latest ? rowToResult(latest) : null;
+  }
 
   const { data, error } = await supabase
     .from("skin_analyses")
@@ -135,6 +181,14 @@ export async function getLatestAnalysis(): Promise<SkinAnalysisResult | null> {
 export async function getAnalysisHistory(limit = 30): Promise<SkinAnalysisResult[]> {
   const userId = await getCurrentUserId();
 
+  if (isDemoModeActive()) {
+    return getLocalRows<LocalSkinAnalysisRow>("skin_analyses", { user_id: userId })
+      .slice()
+      .sort((a, b) => b.analyzed_at.localeCompare(a.analyzed_at))
+      .slice(0, limit)
+      .map(rowToResult);
+  }
+
   const { data, error } = await supabase
     .from("skin_analyses")
     .select()
@@ -151,6 +205,11 @@ export async function getAnalysisHistory(limit = 30): Promise<SkinAnalysisResult
  * regenerates YouCam/Claude output. */
 export async function getAnalysisById(id: string): Promise<SkinAnalysisResult | null> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const [row] = getLocalRows<LocalSkinAnalysisRow>("skin_analyses", { id, user_id: userId });
+    return row ? rowToResult(row) : null;
+  }
 
   const { data, error } = await supabase
     .from("skin_analyses")
@@ -176,6 +235,16 @@ export async function updateSkinDirection(
   skinDirection: string,
 ): Promise<SkinAnalysisResult> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const now = new Date().toISOString();
+    const row = upsertLocalRow<LocalSkinAnalysisRow>(
+      "skin_analyses",
+      { id: analysisId, user_id: userId },
+      { skin_direction: skinDirection, skin_direction_generated_at: now },
+    );
+    return rowToResult(row);
+  }
 
   const { data, error } = await supabase
     .from("skin_analyses")
@@ -208,6 +277,20 @@ export async function updateSkinStrategy(
   recommendationSnapshot: DailyRecommendation,
 ): Promise<SkinAnalysisResult> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const now = new Date().toISOString();
+    const row = upsertLocalRow<LocalSkinAnalysisRow>(
+      "skin_analyses",
+      { id: analysisId, user_id: userId },
+      {
+        skin_strategy: skinStrategy,
+        skin_strategy_generated_at: now,
+        recommendation_snapshot: recommendationSnapshot,
+      },
+    );
+    return rowToResult(row);
+  }
 
   const { data, error } = await supabase
     .from("skin_analyses")

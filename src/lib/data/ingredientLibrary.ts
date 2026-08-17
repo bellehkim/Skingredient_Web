@@ -1,4 +1,6 @@
 import { supabase } from "./supabaseClient";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { INGREDIENT_LIBRARY_SNAPSHOT } from "@/data/catalogSnapshot";
 
 export interface IngredientLibraryEntry {
   id: string;
@@ -42,6 +44,8 @@ function rowToEntry(row: IngredientLibraryRow): IngredientLibraryEntry {
  * excluded, no separate flag column needed.
  */
 export async function getIngredientLibrary(): Promise<IngredientLibraryEntry[]> {
+  if (isDemoModeActive()) return INGREDIENT_LIBRARY_SNAPSHOT;
+
   const { data, error } = await supabase
     .from("ingredients")
     .select("ingredient_id, inci_name, common_name, short_description, benefits, best_for, caution")

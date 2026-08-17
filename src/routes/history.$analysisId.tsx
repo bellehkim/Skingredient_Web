@@ -12,7 +12,7 @@ import { deriveOverallCondition } from "@/lib/overallCondition";
 import { deriveSkinType } from "@/lib/skinType";
 import { METRIC_COLORS } from "@/lib/metricColors";
 import { CATEGORY_COLORS, sortProductsByRoutineStep } from "@/lib/productMatching";
-import { isDemoModeActive } from "@/lib/demoMode";
+import { isScriptedPresentationDemo } from "@/lib/demoMode";
 import { DEMO_ANALYSIS_HISTORY, getDemoHistoryProductIds } from "@/data/demoFixture";
 import type { Product, SkinAnalysisResult } from "@/lib/types";
 
@@ -66,11 +66,14 @@ function HistoryDetail() {
   const { catalog, products, addToShelf } = useAppStore();
 
   useEffect(() => {
-    // Demo Mode history entries (src/data/demoFixture.ts) are never written
-    // to Supabase, so a "demo-" id must never reach getAnalysisById() — it
-    // would just fail to find a matching real row. Real ids (Supabase
-    // uuids) always take the normal path below, in both modes.
-    if (isDemoModeActive() && analysisId.startsWith("demo-")) {
+    // The scripted presentation fixture (src/data/demoFixture.ts, DEV-only
+    // ?demo=true toggle) is never written to Supabase, so a "demo-" id must
+    // never reach getAnalysisById() there — it would just fail to find a
+    // matching real row. A public demo build's own local scans also get
+    // "demo-"-prefixed ids (src/lib/data/analyses.ts) but are real rows in
+    // localStorage, so they correctly take the normal path below via
+    // isScriptedPresentationDemo() rather than isDemoModeActive().
+    if (isScriptedPresentationDemo() && analysisId.startsWith("demo-")) {
       const demoEntry = DEMO_ANALYSIS_HISTORY.find((a) => a.id === analysisId);
       setAnalysis(demoEntry ?? null);
       return;
@@ -114,7 +117,7 @@ function HistoryDetail() {
     dateStyle: "medium",
     timeStyle: "short",
   });
-  const isDemoEntry = isDemoModeActive() && analysisId.startsWith("demo-");
+  const isDemoEntry = isScriptedPresentationDemo() && analysisId.startsWith("demo-");
   const shelfIds = new Set(products.map((p) => p.id));
   const recommendedProducts = isDemoEntry
     ? resolveHistoricalRecommendations(catalog, getDemoHistoryProductIds(analysisId), date)

@@ -2,6 +2,8 @@ import { supabase } from "./supabaseClient";
 import { getCurrentUserId } from "./demoUser";
 import { CATEGORY_COLORS } from "../productMatching";
 import type { Product } from "../types";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { deleteLocalRows, getLocalRows, insertLocalRow } from "./localStore";
 
 interface CustomProductRow {
   custom_product_id: number;
@@ -28,6 +30,13 @@ function rowToProduct(row: CustomProductRow): Product {
 
 export async function getCustomProducts(): Promise<Product[]> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    return getLocalRows<CustomProductRow & { user_id: string }>("custom_products", {
+      user_id: userId,
+    }).map(rowToProduct);
+  }
+
   const { data, error } = await supabase
     .from("custom_products")
     .select("custom_product_id, brand, product_name, category")
@@ -43,6 +52,20 @@ export async function addCustomProduct(input: {
   category: string;
 }): Promise<Product> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const existing = getLocalRows<CustomProductRow>("custom_products");
+    const nextId = existing.reduce((max, row) => Math.max(max, row.custom_product_id), 0) + 1;
+    const row = insertLocalRow("custom_products", {
+      user_id: userId,
+      custom_product_id: nextId,
+      brand: input.brand,
+      product_name: input.name,
+      category: input.category,
+    });
+    return rowToProduct(row);
+  }
+
   const { data, error } = await supabase
     .from("custom_products")
     .insert({
@@ -62,6 +85,15 @@ export async function addCustomProduct(input: {
  * "custom-" UI prefix before calling. */
 export async function removeCustomProduct(customProductId: string): Promise<void> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    deleteLocalRows("custom_products", {
+      user_id: userId,
+      custom_product_id: Number(customProductId),
+    });
+    return;
+  }
+
   const { error } = await supabase
     .from("custom_products")
     .delete()

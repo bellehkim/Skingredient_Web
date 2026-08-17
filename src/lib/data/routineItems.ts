@@ -1,5 +1,11 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentUserId } from "./demoUser";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { deleteLocalRows, getLocalRows, upsertLocalRow } from "./localStore";
+
+interface LocalRoutineItemRow extends RoutineItemRow {
+  user_id: string;
+}
 
 export type RoutineTimeOfDay = "am" | "pm";
 
@@ -37,6 +43,11 @@ function idColumns(productId: string): { product_id: number | null; custom_produ
  * consumed by src/lib/routineComposer.ts as the highest-priority source. */
 export async function getRoutineItems(): Promise<RoutineItem[]> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    return getLocalRows<LocalRoutineItemRow>("routine_items", { user_id: userId }).map(rowToItem);
+  }
+
   const { data, error } = await supabase
     .from("routine_items")
     .select("product_id, custom_product_id, time_of_day")
@@ -58,6 +69,18 @@ export async function addRoutineItems(
 ): Promise<void> {
   const userId = await getCurrentUserId();
   const ids = idColumns(productId);
+
+  if (isDemoModeActive()) {
+    for (const timeOfDay of timesOfDay) {
+      upsertLocalRow<LocalRoutineItemRow>(
+        "routine_items",
+        { user_id: userId, ...ids, time_of_day: timeOfDay },
+        {},
+      );
+    }
+    return;
+  }
+
   const rows = timesOfDay.map((timeOfDay) => ({ user_id: userId, ...ids, time_of_day: timeOfDay }));
   const onConflict =
     ids.custom_product_id !== null
@@ -77,6 +100,16 @@ export async function removeRoutineItem(
 ): Promise<void> {
   const userId = await getCurrentUserId();
   const ids = idColumns(productId);
+
+  if (isDemoModeActive()) {
+    deleteLocalRows<LocalRoutineItemRow>("routine_items", {
+      user_id: userId,
+      ...ids,
+      time_of_day: timeOfDay,
+    });
+    return;
+  }
+
   let query = supabase
     .from("routine_items")
     .delete()

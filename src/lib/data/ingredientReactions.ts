@@ -1,5 +1,8 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentUserId } from "./demoUser";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { ALL_INGREDIENTS_SNAPSHOT } from "@/data/catalogSnapshot";
+import { deleteLocalRows, getLocalRows, upsertLocalRow } from "./localStore";
 
 export type Reaction = "helpful" | "neutral" | "irritating" | "unknown";
 
@@ -45,23 +48,46 @@ export const EMPTY_INGREDIENT_REACTIONS: IngredientReactionsData = {
  * round trip; see IngredientReactionsData field docs for how each shape is
  * used downstream.
  */
+interface LocalReactionRow {
+  user_id: string;
+  ingredient_id: number;
+  reaction_type: Reaction;
+}
+
+function reactionRowsFromLocal(rows: LocalReactionRow[]): ReactionRow[] {
+  return rows.map((row) => {
+    const ingredient = ALL_INGREDIENTS_SNAPSHOT.find((i) => i.ingredient_id === row.ingredient_id);
+    return {
+      reaction_type: row.reaction_type,
+      ingredients: ingredient
+        ? { inci_name: ingredient.inci_name, ingredient_functions: ingredient.ingredient_functions }
+        : null,
+    };
+  });
+}
+
 export async function getIngredientReactions(): Promise<IngredientReactionsData> {
   const userId = await getCurrentUserId();
-  const { data, error } = await supabase
-    .from("ingredient_reactions")
-    .select(
-      "reaction_type, ingredients ( inci_name, ingredient_functions ( functional_category ) )",
-    )
-    .eq("user_id", userId);
 
-  if (error) throw error;
+  const rows = isDemoModeActive()
+    ? reactionRowsFromLocal(getLocalRows<LocalReactionRow>("ingredient_reactions", { user_id: userId }))
+    : await (async () => {
+        const { data, error } = await supabase
+          .from("ingredient_reactions")
+          .select(
+            "reaction_type, ingredients ( inci_name, ingredient_functions ( functional_category ) )",
+          )
+          .eq("user_id", userId);
+        if (error) throw error;
+        return data as unknown as ReactionRow[];
+      })();
 
   const history: Record<string, Reaction> = {};
   const irritatingIngredients = new Set<string>();
   const irritatingIngredientNames: string[] = [];
   const irritatingCategories = new Set<string>();
 
-  for (const row of data as unknown as ReactionRow[]) {
+  for (const row of rows) {
     if (!row.ingredients) continue;
     const name = row.ingredients.inci_name.toLowerCase();
     history[name] = row.reaction_type;
@@ -90,6 +116,17 @@ export async function upsertIngredientReaction(
 ): Promise<void> {
   const userId = await getCurrentUserId();
 
+  if (isDemoModeActive()) {
+    const ingredient = ALL_INGREDIENTS_SNAPSHOT.find((i) => i.inci_name === inciName);
+    if (!ingredient) throw new Error(`Unknown ingredient: ${inciName}`);
+    upsertLocalRow<LocalReactionRow>(
+      "ingredient_reactions",
+      { user_id: userId, ingredient_id: ingredient.ingredient_id },
+      { reaction_type: reactionType },
+    );
+    return;
+  }
+
   const { data: ingredient, error: lookupError } = await supabase
     .from("ingredients")
     .select("ingredient_id")
@@ -115,6 +152,16 @@ export async function upsertIngredientReaction(
  */
 export async function removeIngredientReaction(inciName: string): Promise<void> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const ingredient = ALL_INGREDIENTS_SNAPSHOT.find((i) => i.inci_name === inciName);
+    if (!ingredient) throw new Error(`Unknown ingredient: ${inciName}`);
+    deleteLocalRows<LocalReactionRow>("ingredient_reactions", {
+      user_id: userId,
+      ingredient_id: ingredient.ingredient_id,
+    });
+    return;
+  }
 
   const { data: ingredient, error: lookupError } = await supabase
     .from("ingredients")

@@ -98,6 +98,13 @@ function Home() {
     // TypeScript the same guarantee (appStore doesn't encode the
     // relationship between the two in a way the type system can see here).
     if (!analysis) return;
+    // /api/skin-direction calls Anthropic directly — Demo Mode must never
+    // reach it. Unreachable in practice today (the demo fixture always
+    // populates skinDirection, so this button never renders in Demo Mode —
+    // see the `!` check below), but guarded explicitly rather than relying
+    // on that alone, since it's the one Anthropic call site anywhere in the
+    // app that isn't already structurally impossible in Demo Mode.
+    if (isDemoModeActive()) return;
     setRetryingDirection(true);
     try {
       const res = await fetch("/api/skin-direction", {

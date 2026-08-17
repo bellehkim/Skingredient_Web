@@ -1,6 +1,17 @@
 import { supabase } from "./supabaseClient";
 import { getCurrentUserId } from "./demoUser";
 import type { Reaction } from "./ingredientReactions";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { CATALOG_PRODUCTS_SNAPSHOT } from "@/data/catalogSnapshot";
+import { getLocalRows, updateLocalRows, upsertLocalRow } from "./localStore";
+
+interface LocalProductReactionRow {
+  user_id: string;
+  product_id: number;
+  reaction_type: Reaction;
+  excluded_from_recommendations: boolean;
+  created_at: string;
+}
 
 export interface ProductReactionsData {
   /** All current product reactions, keyed by product id (string, matching
@@ -34,6 +45,21 @@ export const EMPTY_PRODUCT_REACTIONS: ProductReactionsData = {
  */
 export async function getProductReactions(): Promise<ProductReactionsData> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const rows = getLocalRows<LocalProductReactionRow>("product_reactions", { user_id: userId });
+    const history: Record<string, Reaction> = {};
+    const excludedProductIds = new Set<string>();
+    for (const row of rows) {
+      const id = String(row.product_id);
+      history[id] = row.reaction_type;
+      if (row.reaction_type === "irritating" && row.excluded_from_recommendations) {
+        excludedProductIds.add(id);
+      }
+    }
+    return { history, excludedProductIds };
+  }
+
   const { data, error } = await supabase
     .from("product_reactions")
     .select("product_id, reaction_type, excluded_from_recommendations")
@@ -69,6 +95,19 @@ export async function upsertProductReaction(
 ): Promise<void> {
   const userId = await getCurrentUserId();
 
+  if (isDemoModeActive()) {
+    upsertLocalRow<LocalProductReactionRow>(
+      "product_reactions",
+      { user_id: userId, product_id: Number(productId) },
+      {
+        reaction_type: reactionType,
+        excluded_from_recommendations: true,
+        created_at: new Date().toISOString(),
+      },
+    );
+    return;
+  }
+
   const { error } = await supabase.from("product_reactions").upsert(
     {
       user_id: userId,
@@ -92,6 +131,15 @@ export async function setProductReactionExcluded(
   excluded: boolean,
 ): Promise<void> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    updateLocalRows<LocalProductReactionRow>(
+      "product_reactions",
+      { user_id: userId, product_id: Number(productId) },
+      { excluded_from_recommendations: excluded },
+    );
+    return;
+  }
 
   const { error } = await supabase
     .from("product_reactions")
@@ -120,6 +168,28 @@ export interface ProductReactionHistoryEntry {
  */
 export async function getProductReactionHistory(): Promise<ProductReactionHistoryEntry[]> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const rows = getLocalRows<LocalProductReactionRow>("product_reactions", { user_id: userId });
+    return rows
+      .slice()
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((row) => {
+        const product = CATALOG_PRODUCTS_SNAPSHOT.find((p) => p.product_id === row.product_id);
+        return product
+          ? {
+              productId: String(row.product_id),
+              brand: product.brand,
+              productName: product.product_name,
+              reactionType: row.reaction_type,
+              createdAt: row.created_at,
+              excludedFromRecommendations: row.excluded_from_recommendations,
+            }
+          : null;
+      })
+      .filter((entry): entry is ProductReactionHistoryEntry => entry !== null);
+  }
+
   const { data, error } = await supabase
     .from("product_reactions")
     .select(

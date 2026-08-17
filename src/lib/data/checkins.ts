@@ -2,6 +2,16 @@ import { supabase } from "./supabaseClient";
 import { getCurrentUserId } from "./demoUser";
 import { todayDateString } from "@/lib/date";
 import type { EventTiming, ScheduleOption } from "@/lib/types";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { getLocalRows, upsertLocalRow } from "./localStore";
+
+interface LocalCheckInRow {
+  user_id: string;
+  check_in_date: string;
+  symptoms: string[];
+  schedule_option: ScheduleOption;
+  event_timing: EventTiming;
+}
 
 export interface TodaysCheckIn {
   symptoms: string[];
@@ -29,6 +39,14 @@ function rowToCheckIn(row: CheckInRow): TodaysCheckIn {
 export async function getTodaysCheckIn(): Promise<TodaysCheckIn | null> {
   const userId = await getCurrentUserId();
 
+  if (isDemoModeActive()) {
+    const [row] = getLocalRows<LocalCheckInRow>("daily_checkins", {
+      user_id: userId,
+      check_in_date: todayDateString(),
+    });
+    return row ? rowToCheckIn(row) : null;
+  }
+
   const { data, error } = await supabase
     .from("daily_checkins")
     .select("symptoms, schedule_option, event_timing")
@@ -46,6 +64,12 @@ export async function getTodaysCheckIn(): Promise<TodaysCheckIn | null> {
 export async function getCheckInDates(): Promise<string[]> {
   const userId = await getCurrentUserId();
 
+  if (isDemoModeActive()) {
+    return getLocalRows<LocalCheckInRow>("daily_checkins", { user_id: userId }).map(
+      (row) => row.check_in_date,
+    );
+  }
+
   const { data, error } = await supabase
     .from("daily_checkins")
     .select("check_in_date")
@@ -62,6 +86,19 @@ export async function getCheckInDates(): Promise<string[]> {
  */
 export async function upsertTodaysCheckIn(input: TodaysCheckIn): Promise<TodaysCheckIn> {
   const userId = await getCurrentUserId();
+
+  if (isDemoModeActive()) {
+    const row = upsertLocalRow<LocalCheckInRow>(
+      "daily_checkins",
+      { user_id: userId, check_in_date: todayDateString() },
+      {
+        symptoms: input.symptoms,
+        schedule_option: input.scheduleOption,
+        event_timing: input.eventTiming,
+      },
+    );
+    return rowToCheckIn(row);
+  }
 
   const { data, error } = await supabase
     .from("daily_checkins")

@@ -18,6 +18,8 @@ import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { useAppStore } from "@/lib/appStore";
 import { resetDemoUser } from "@/lib/data/demoUser";
 import { deriveSkinType } from "@/lib/skinType";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { clearLocalTables } from "@/lib/data/localStore";
 
 // Hidden for the MVP — these goals are static/hardcoded, not persisted or
 // user-editable, so showing them alongside real Skin Type data would be
@@ -67,11 +69,14 @@ function Profile() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Hackathon dev/demo tool only — see src/lib/data/demoUser.ts. Wipes the
-  // fixed demo user's Supabase rows (cascades to scans/shelf/custom
-  // products) and the one localStorage key this app writes, then hard-
-  // reloads to /welcome so AppStoreProvider's mount-only fetches re-run
-  // against the now-empty tables instead of leaving stale in-memory state.
+  // Hackathon dev/demo tool only — see src/lib/data/demoUser.ts. In Demo
+  // Mode (either the DEV-only presentation toggle or a deployed public demo
+  // build — see src/lib/demoMode.ts), everything this user has done lives in
+  // localStorage, never Supabase, so Reset just wipes that (clearLocalTables,
+  // src/lib/data/localStore.ts). Outside Demo Mode, it wipes the fixed demo
+  // user's actual Supabase rows instead (cascades to scans/shelf/custom
+  // products). Either way, hard-reloads to /welcome so AppStoreProvider's
+  // mount-only fetches re-run against the now-empty state.
   const handleResetDemo = async () => {
     const confirmed = window.confirm(
       "Reset all demo data? This will clear scans, shelf items, and personal products.",
@@ -80,7 +85,11 @@ function Profile() {
 
     setResetting(true);
     try {
-      await resetDemoUser();
+      if (isDemoModeActive()) {
+        clearLocalTables();
+      } else {
+        await resetDemoUser();
+      }
       window.location.href = "/welcome";
     } catch (err) {
       console.error("Failed to reset demo data", err);
@@ -175,7 +184,7 @@ function Profile() {
       </PageContainer>
 
       {mounted &&
-        import.meta.env.DEV &&
+        (import.meta.env.DEV || isDemoModeActive()) &&
         createPortal(
           <button
             onClick={handleResetDemo}
