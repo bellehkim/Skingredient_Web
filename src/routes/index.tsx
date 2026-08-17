@@ -19,6 +19,8 @@ import {
 import { AppShell, PageContainer } from "@/components/app/AppShell";
 import { useAppStore } from "@/lib/appStore";
 import { updateSkinDirection } from "@/lib/data/analyses";
+import { isDemoModeActive } from "@/lib/demoMode";
+import { DEMO_SCHEDULE_OPTION, DEMO_EVENT_TIMING } from "@/data/demoFixture";
 import type { EventTiming, ScheduleOption } from "@/lib/types";
 
 // Upcoming-plan card labels — sourced entirely from the live scheduleTomorrow
@@ -67,12 +69,21 @@ function Home() {
   } = useAppStore();
   const [retryingDirection, setRetryingDirection] = useState(false);
   const todaysRoutineComplete = checkInCompletedToday && scanCompletedToday;
-  const hasUpcomingPlan = scheduleTomorrow !== "none" && eventTiming !== "none";
+  // Demo Mode (src/lib/demoMode.ts) forces the same approved upcoming-plan
+  // scenario (outdoor activity / tomorrow) that src/routes/scan.index.tsx's
+  // demo branch already bakes into today's recommendation snapshot — the
+  // Event card reads real todaysCheckIn state otherwise, so without this it
+  // could show whatever schedule was actually last checked in with (e.g. a
+  // leftover "Within 3 days" from earlier real testing), independent of the
+  // fixed demo scenario. Real Mode is completely unaffected.
+  const upcomingScheduleType = isDemoModeActive() ? DEMO_SCHEDULE_OPTION : scheduleTomorrow;
+  const upcomingEventTiming = isDemoModeActive() ? DEMO_EVENT_TIMING : eventTiming;
+  const hasUpcomingPlan = upcomingScheduleType !== "none" && upcomingEventTiming !== "none";
   const eventWhenLabel = hasUpcomingPlan
-    ? EVENT_TIMING_LABEL[eventTiming]
+    ? EVENT_TIMING_LABEL[upcomingEventTiming]
     : EVENT_TIMING_LABEL.none;
   const eventTypeLabel = hasUpcomingPlan
-    ? EVENT_TYPE_LABEL[scheduleTomorrow]
+    ? EVENT_TYPE_LABEL[upcomingScheduleType]
     : EVENT_TYPE_LABEL.none;
 
   // Manual retry only — never runs on mount/refresh/navigation/re-render, only

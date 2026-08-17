@@ -33,18 +33,19 @@ export const DEMO_ANALYSIS = {
 export const DEMO_SKIN_DIRECTION =
   "Focus on gentle blemish control today while giving your skin some extra hydration support to keep your barrier comfortable.";
 
-/** Fixed "Today's Skin Strategy" — written to match what the real
- * deterministic pipeline actually produces for DEMO_ANALYSIS +
- * DEMO_SCHEDULE_OPTION/DEMO_EVENT_TIMING (Blemish Control priorities
- * unchanged, Retinoids added to avoided, Sunscreen deliberately NOT
- * inserted into today's priorities — see sunProtectionForTiming's
- * "tomorrow" branch in scheduleAdjustments.ts). Opens with the upcoming-plan
- * acknowledgment the way skinStrategyService.ts's real prompt would, keeps
- * today's guidance and tomorrow's sun-protection emphasis clearly separate,
- * and frames the Retinoids caution conservatively (this specific
- * upcoming-sun-exposure context, never "retinoids are generally unsafe"). */
+/** Fixed "Today's Skin Strategy" — written to read comparably to a real
+ * Claude-generated paragraph (src/lib/skinStrategyService.ts): today's skin
+ * state first (breakouts/redness/hydration), then concrete actions
+ * (familiar acne-focused ingredients, no stacking multiple strong actives,
+ * keep the rest simple/hydrating), then the upcoming-plan preparation last
+ * (avoid anything new tonight, broad-spectrum sunscreen + reapplication
+ * once outdoors tomorrow) — matching what the real deterministic pipeline
+ * actually produces for DEMO_ANALYSIS + DEMO_SCHEDULE_OPTION/
+ * DEMO_EVENT_TIMING (Blemish Control priorities unchanged, Retinoids added
+ * to avoided, Sunscreen deliberately NOT inserted into today's priorities —
+ * see sunProtectionForTiming's "tomorrow" branch in scheduleAdjustments.ts). */
 export const DEMO_SKIN_STRATEGY =
-  "With an outdoor day coming up tomorrow, today's plan stays focused on gentle blemish control paired with steady barrier support. A few breakouts and some redness are showing up alongside slightly lower hydration, so keep tonight's routine predictable and skip introducing anything new or strong, since piling on actives right before more sun exposure isn't worth the extra irritation risk. Save the intensity for another day. Tomorrow, prioritize broad spectrum sunscreen from the morning on and reapply if you're outdoors for a while.";
+  "Your skin is showing active breakouts along with some redness and lower hydration today. Focus on gentle blemish care while keeping your skin barrier supported. Stick with your familiar acne-focused ingredients, avoid layering multiple strong actives, and keep the rest of your routine simple and hydrating. With outdoor activities planned for tomorrow, avoid introducing anything potentially irritating tonight and remember to use broad-spectrum sunscreen and reapply as needed while you're outdoors.";
 
 /** Forced into generateRecommendation() only for the demo branch — never
  * written to daily_checkins, never affects real check-in state. Makes the

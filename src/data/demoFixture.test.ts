@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { generateRecommendation } from "@/lib/recommendationEngine";
 import { deriveOverallCondition } from "@/lib/overallCondition";
+import { SKIN_STRATEGY_FALLBACK_TEXT } from "@/components/app/SkinStrategyCard";
 import {
   DEMO_ANALYSIS,
   DEMO_ANALYSIS_HISTORY,
   DEMO_EVENT_TIMING,
   DEMO_SCHEDULE_OPTION,
+  DEMO_SKIN_STRATEGY,
   getDemoHistoryProductIds,
 } from "./demoFixture";
 
@@ -202,5 +204,52 @@ describe("DEMO_ANALYSIS scenario", () => {
     expect(rec.explanation.toLowerCase()).toContain("sunscreen");
     expect(rec.explanation.toLowerCase()).toContain("tomorrow");
     expect(rec.explanation).not.toContain("—");
+  });
+});
+
+// Locks in DEMO_SKIN_STRATEGY's content, independent of whether
+// src/routes/scan.index.tsx's demo branch is actually wiring it in
+// correctly (that data flow was traced by hand: the demo branch always sets
+// result.skinStrategy = DEMO_SKIN_STRATEGY on the object it builds, and
+// nothing downstream — createAnalysis, generateAndPersistSkinStrategy,
+// submitTodaysCheckIn — ever overwrites an already-set skinStrategy with a
+// live Claude call or a null). What had zero coverage before this was the
+// fixture content itself: nothing asserted DEMO_SKIN_STRATEGY was long
+// enough, on-scenario, or distinct from SkinStrategyCard's fallback text —
+// so a regression here (e.g. an accidental empty string) would have looked
+// identical to the fallback with no test catching it.
+describe("DEMO_SKIN_STRATEGY content", () => {
+  it("is never the same as SkinStrategyCard's non-AI fallback text", () => {
+    expect(DEMO_SKIN_STRATEGY).not.toBe(SKIN_STRATEGY_FALLBACK_TEXT);
+  });
+
+  it("is comparable in length to a real Claude-generated paragraph, not a one-liner", () => {
+    expect(DEMO_SKIN_STRATEGY.length).toBeGreaterThan(300);
+  });
+
+  it("covers today's skin state, concrete actions, and tomorrow's outdoor prep", () => {
+    const lower = DEMO_SKIN_STRATEGY.toLowerCase();
+    // Today's skin state.
+    expect(lower).toMatch(/breakout/);
+    expect(lower).toMatch(/redness/);
+    expect(lower).toMatch(/hydration/);
+    // Concrete actions consistent with the Blemish Control PRIORITIZE/AVOID
+    // lists (Salicylic Acid/Azelaic Acid/Niacinamide/Ceramides/Panthenol
+    // prioritized; Retinoids + stacking multiple strong actives avoided).
+    expect(lower).toMatch(/acne/);
+    expect(lower).toMatch(/strong actives|multiple.*actives/);
+    // Tomorrow's outdoor-day/tomorrow schedule prep.
+    expect(lower).toContain("tomorrow");
+    expect(lower).toMatch(/sunscreen/);
+    expect(lower).toMatch(/reapply/);
+  });
+
+  it("never uses an em dash", () => {
+    expect(DEMO_SKIN_STRATEGY).not.toContain("—");
+  });
+
+  it("uses sentence case, not title case, for its opening word", () => {
+    expect(DEMO_SKIN_STRATEGY[0]).toBe(DEMO_SKIN_STRATEGY[0].toUpperCase());
+    expect(DEMO_SKIN_STRATEGY.slice(1, 4)).toBe(DEMO_SKIN_STRATEGY.slice(1, 4).toLowerCase());
   });
 });
