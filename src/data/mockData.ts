@@ -1,7 +1,4 @@
-import type { Product, SkinAnalysisResult } from "@/lib/types";
-import ceraveImg from "@/assets/product-cerave.jpg";
-import centellaImg from "@/assets/product-centella.jpg";
-import ahabhaImg from "@/assets/product-ahabha.jpg";
+import type { SkinAnalysisResult } from "@/lib/types";
 
 export const mockUser = {
   name: "Jane",
@@ -26,52 +23,6 @@ export const mockAnalysis: SkinAnalysisResult = {
   analyzedAt: new Date().toISOString(),
   skinDirection: "Focus on calming redness while keeping your barrier supported today.",
 };
-
-export const mockProducts: Product[] = [
-  {
-    id: "cerave-mc",
-    brand: "CeraVe",
-    name: "Moisturizing Cream",
-    category: "Moisturizer",
-    status: "use-today",
-    keyIngredients: ["Ceramides", "Glycerin", "Hyaluronic Acid"],
-    reason: "Great for your barrier recovery plan.",
-    imageColor: "#EAF6FF",
-    imageUrl: ceraveImg,
-    benefitTags: ["Supports barrier recovery", "Locks in hydration", "Gentle for reactive days"],
-    benefits: ["Strengthens skin barrier", "Locks in moisture", "Reduces dryness and flakiness"],
-  },
-  {
-    id: "iunik-centella",
-    brand: "iUNIK",
-    name: "Centella Calming Gel Cream",
-    category: "Moisturizer",
-    status: "optional",
-    keyIngredients: ["Centella", "Panthenol", "Beta-Glucan"],
-    reason: "Calms and hydrates, but may feel light if your skin is very dry.",
-    imageColor: "#E8F8F1",
-    imageUrl: centellaImg,
-    benefitTags: ["Helps calm redness", "Lightweight hydration", "Fragrance-free"],
-    benefits: ["Calms redness", "Lightweight hydration"],
-  },
-  {
-    id: "ordinary-ahabha",
-    brand: "The Ordinary",
-    name: "AHA 30% + BHA 2% Peeling Solution",
-    category: "Exfoliant",
-    status: "skip-today",
-    keyIngredients: ["Glycolic Acid", "Lactic Acid", "Salicylic Acid"],
-    reason: "Your redness is elevated and you have an event tomorrow.",
-    imageColor: "#FFF0F1",
-    imageUrl: ahabhaImg,
-    benefitTags: [
-      "Strong exfoliating actives",
-      "Pause while barrier recovers",
-      "Avoid before events",
-    ],
-    concern: "Strong exfoliating actives — pause while your barrier recovers.",
-  },
-];
 
 // Redness health score dipped mid-week (worse) and has been recovering since —
 // higher = healthier, same convention as SkinAnalysisResult.
